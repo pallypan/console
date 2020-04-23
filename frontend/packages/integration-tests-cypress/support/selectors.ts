@@ -1,8 +1,10 @@
+import { expect } from 'chai';
+
 export {};
 declare global {
   namespace Cypress {
     interface Chainable<Subject> {
-      byTestID(selector: string): Chainable<Element>;
+      byTestID(selector: string, regex?: any): Chainable<Element>;
       byTestActionID(selector: string): Chainable<Element>;
       byLegacyTestID(selector: string): Chainable<Element>;
     }
@@ -11,7 +13,16 @@ declare global {
 
 // any command added below, must be added to global Cypress interface above
 
-Cypress.Commands.add('byTestID', (selector: string) => cy.get(`[data-test="${selector}"]`));
+Cypress.Commands.add('byTestID', (selector: string, regex?: any) => {
+  if (regex) {
+    cy.get(`[data-test="${selector}"]`).should(($element) => {
+      const text = $element.text();
+      expect(text).to.match(regex);
+    });
+  } else {
+    cy.get(`[data-test="${selector}"]`);
+  }
+});
 Cypress.Commands.add('byTestActionID', (selector: string) =>
   cy.get(`[data-test-action="${selector}"]:not(.pf-m-disabled)`),
 );

@@ -8,13 +8,15 @@ import { Route, Router, Switch } from 'react-router-dom';
 // AbortController is not supported in some older browser versions
 import 'abort-controller/polyfill';
 import store from '../redux';
+import { withTranslation } from 'react-i18next';
+
 import { detectFeatures } from '../actions/features';
 import AppContents from './app-contents';
 import { getBrandingDetails, Masthead } from './masthead';
 import { ConsoleNotifier } from './console-notifier';
 import { ConnectedNotificationDrawer } from './notification-drawer';
 import { Navigation } from './nav';
-import { history, AsyncComponent } from './utils';
+import { history, AsyncComponent, LoadingBox } from './utils';
 import * as UIActions from '../actions/ui';
 import { fetchSwagger, getCachedResources } from '../module/k8s';
 import { receivedResources, watchAPIServices } from '../actions/k8s';
@@ -30,6 +32,7 @@ const consoleLoader = () =>
     '@console/kubevirt-plugin/src/components/connected-vm-console/vm-console-page' /* webpackChunkName: "kubevirt" */
   ).then((m) => m.VMConsolePage);
 import QuickStartDrawer from '@console/app/src/components/quick-starts/QuickStartDrawer';
+import '../i18n';
 import '../vendor.scss';
 import '../style.scss';
 
@@ -192,6 +195,8 @@ class App_ extends React.PureComponent {
 
 const App = withExtensions({ contextProviderExtensions: isContextProvider })(App_);
 
+const AppWithTranslation = withTranslation()(App);
+
 const startDiscovery = () => store.dispatch(watchAPIServices());
 
 // Load cached API resources from localStorage to speed up page load.
@@ -250,17 +255,21 @@ if ('serviceWorker' in navigator) {
 }
 
 render(
-  <Provider store={store}>
-    <Router history={history} basename={window.SERVER_FLAGS.basePath}>
-      <Switch>
-        <Route
-          path="/k8s/ns/:ns/virtualmachineinstances/:name/standaloneconsole"
-          render={(componentProps) => <AsyncComponent loader={consoleLoader} {...componentProps} />}
-        />
-        <Route path="/terminal" component={CloudShellTab} />
-        <Route path="/" component={App} />
-      </Switch>
-    </Router>
-  </Provider>,
+  <React.Suspense fallback={<LoadingBox />}>
+    <Provider store={store}>
+      <Router history={history} basename={window.SERVER_FLAGS.basePath}>
+        <Switch>
+          <Route
+            path="/k8s/ns/:ns/virtualmachineinstances/:name/standaloneconsole"
+            render={(componentProps) => (
+              <AsyncComponent loader={consoleLoader} {...componentProps} />
+            )}
+          />
+          <Route path="/terminal" component={CloudShellTab} />
+          <Route path="/" component={AppWithTranslation} />
+        </Switch>
+      </Router>
+    </Provider>
+  </React.Suspense>,
   document.getElementById('app'),
 );
