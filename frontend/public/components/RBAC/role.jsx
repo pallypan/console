@@ -59,7 +59,7 @@ const RolesTableRow = ({ obj: role, index, key, style }) => {
         {role.metadata.namespace ? (
           <ResourceLink kind="Namespace" name={role.metadata.namespace} />
         ) : (
-          'All Namespaces'
+          i18next.t('role~All Namespaces')
         )}
       </TableData>
       <TableData className={roleColumnClasses[2]}>
@@ -95,7 +95,7 @@ class Details extends React.Component {
     return (
       <div>
         <div className="co-m-pane__body">
-          <SectionHeading text="Role details" />
+          <SectionHeading text={t('role~Role details')} />
           <div className="row">
             <div className="col-xs-6">
               <dl className="co-m-pane__details">
@@ -161,7 +161,7 @@ const BindingsTableRow = ({ obj: binding, index, key, style }) => {
       <TableData className={bindingsColumnClasses[1]}>{binding.subject.kind}</TableData>
       <TableData className={bindingsColumnClasses[2]}>{binding.subject.name}</TableData>
       <TableData className={bindingsColumnClasses[3]}>
-        {binding.namespace || 'All Namespaces'}
+        {binding.namespace || i18next.t('role~All Namespaces')}
       </TableData>
     </TableRow>
   );

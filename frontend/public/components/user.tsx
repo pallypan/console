@@ -38,7 +38,7 @@ const UserKebab_: React.FC<UserKebabProps & UserKebabDispatchProps> = ({
 }) => {
   const { t } = useTranslation();
   const impersonateAction: KebabAction = (kind: K8sKind, obj: UserKind) => ({
-    label: `${t('user~Impersonate User ')}"${obj.metadata.name}"`,
+    label: t('user~Impersonate User {{name}}', obj.metadata),
     callback: () => startImpersonate('User', obj.metadata.name),
   });
   return (
@@ -75,7 +75,7 @@ const UserTableRow: RowFunction<UserKind> = ({ obj, index, key, style }) => {
 
 const EmptyMsg = () => {
   const { t } = useTranslation();
-  return <MsgBox title={t('user~No Users Found')} />;
+  return <MsgBox title={t('user~No users found')} />;
 };
 const oAuthResourcePath = resourcePathFromModel(OAuthModel, 'cluster');
 
@@ -83,7 +83,7 @@ const NoDataEmptyMsg = () => {
   const { t } = useTranslation();
   return (
     <MsgBox
-      title={t('user~No Users Found')}
+      title={t('user~No users found')}
       detail={
         <>
           <p>
@@ -198,7 +198,7 @@ const UserDetailsPage_: React.FC<UserDetailsPageProps & UserKebabDispatchProps> 
 }) => {
   const { t } = useTranslation();
   const impersonateAction: KebabAction = (kind: K8sKind, obj: UserKind) => ({
-    label: `${t('user~Impersonate User ')} "${obj.metadata.name}"`,
+    label: t('user~Impersonate User {{name}}', obj.metadata),
     callback: () => startImpersonate('User', obj.metadata.name),
   });
   return (
