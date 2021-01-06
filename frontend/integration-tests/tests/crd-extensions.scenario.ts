@@ -275,6 +275,9 @@ describe('CRD extensions', () => {
         { metadata: { name: podName, labels: { app: name } } },
         safeLoad(content),
       );
+      // TODO: Remove when the default `registry.redhat.io/openshift4/ose-hello-openshift-rhel8`
+      // image is published.
+      newContent.spec.containers[0].image = 'openshift/hello-openshift:latest';
       await yamlView.setEditorContent(safeDump(newContent));
       await yamlView.saveButton.click();
       expect(crudView.errorMessage.isPresent()).toBe(false);
@@ -305,7 +308,9 @@ describe('CRD extensions', () => {
 
     it(`does not display the ${crd} instance on the test pod`, async () => {
       await browser.get(`${appHost}/k8s/ns/${testName}/pods/${podName}/logs`);
-      await crudView.isLoaded();
+      // Don't use `crudView.isLoaded` here since it will block until the log
+      // content itself is loaded and sometimes time out.
+      await browser.wait(crudView.untilLoadingBoxLoaded);
       expect(cell.isPresent()).toBe(false);
     });
 

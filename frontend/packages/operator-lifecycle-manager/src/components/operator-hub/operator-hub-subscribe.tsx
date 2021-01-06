@@ -41,7 +41,7 @@ import {
 } from '../../types';
 import {
   ClusterServiceVersionLogo,
-  defaultChannelFor,
+  defaultChannelNameFor,
   getManualSubscriptionsInNamespace,
   iconFor,
   NamespaceIncludesManualApproval,
@@ -49,9 +49,8 @@ import {
   referenceForProvidedAPI,
   supportedInstallModesFor,
 } from '../index';
-import { installedFor, supports, providedAPIsFor, isGlobal } from '../operator-group';
+import { installedFor, supports, providedAPIsForOperatorGroup, isGlobal } from '../operator-group';
 import { CRDCard } from '../clusterserviceversion';
-import { getInternalObjects, isInternalObject } from '../../utils';
 import { OperatorInstallStatusPage } from '../operator-install-page';
 
 export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> = (props) => {
@@ -85,7 +84,8 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
     )}-${new URLSearchParams(window.location.search).get('catalogNamespace')}`,
   });
 
-  const selectedUpdateChannel = updateChannel || defaultChannelFor(props.packageManifest.data[0]);
+  const selectedUpdateChannel =
+    updateChannel || defaultChannelNameFor(props.packageManifest.data[0]);
   const selectedInstallMode =
     installMode ||
     supportedInstallModesFor(props.packageManifest.data[0])(selectedUpdateChannel).reduce(
@@ -121,8 +121,6 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
       ? referenceFor(initializationResource)
       : null;
   }
-
-  const internalObjects = getInternalObjects(currentCSVDesc, 'annotations');
 
   const globalNS =
     (props.operatorGroup?.data || ([] as OperatorGroupKind[])).find(
@@ -228,7 +226,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
     if (_.isEmpty(operatorGroups)) {
       return [];
     }
-    const existingAPIs = _.flatMap(operatorGroups, providedAPIsFor);
+    const existingAPIs = _.flatMap(operatorGroups, providedAPIsForOperatorGroup);
     const providedAPIs = providedAPIsForChannel(props.packageManifest.data[0])(
       selectedUpdateChannel,
     ).map((desc) => referenceForProvidedAPI(desc));
@@ -550,9 +548,7 @@ export const OperatorHubSubscribeForm: React.FC<OperatorHubSubscribeFormProps> =
     </div>
   );
 
-  const providedAPIs = providedAPIsForChannel(props.packageManifest.data[0])(
-    selectedUpdateChannel,
-  ).filter((item) => !isInternalObject(internalObjects, item.name));
+  const providedAPIs = providedAPIsForChannel(props.packageManifest.data[0])(selectedUpdateChannel);
 
   if (showInstallStatusPage) {
     return (

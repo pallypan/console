@@ -10,14 +10,10 @@ import {
   ExpandableSection,
   Popover,
   PopoverPosition,
-  Alert,
-  Stack,
-  StackItem,
 } from '@patternfly/react-core';
 import { HelpIcon } from '@patternfly/react-icons';
 import { PersistentVolumeClaimModel, StorageClassModel } from '@console/internal/models';
 import {
-  ExternalLink,
   ListDropdown,
   LoadingInline,
   RequestSizeInput,
@@ -49,7 +45,7 @@ import {
 import { getAnnotation } from '../../../selectors/selectors';
 import { getFieldId } from '../../create-vm-wizard/utils/renderable-field-utils';
 import { VMSettingsField } from '../../create-vm-wizard/types';
-import { STORAGE_CLASS_SUPPORTED_MATRIX_DOC_LINK } from '../../../utils/strings';
+import { ConfigMapDefaultModesAlert } from '../../Alerts/ConfigMapDefaultModesAlert';
 
 type AdvancedSectionProps = {
   state: BootSourceState;
@@ -108,9 +104,11 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ state, dispatch, disa
   );
 
   React.useEffect(() => {
-    if (!scAllowedLoading && scLoaded && cmLoaded) {
-      if (!state.storageClass?.value && defaultSCName) {
+    if (!scAllowedLoading && scLoaded && cmLoaded && !state.storageClass?.value) {
+      if (defaultSCName) {
         handleStorageClass(defaultSCName);
+      } else {
+        handleStorageClass(storageClasses?.[0]?.metadata?.name);
       }
     }
   }, [
@@ -122,6 +120,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ state, dispatch, disa
     scConfigMap,
     cmLoaded,
     scAllowedLoading,
+    storageClasses,
   ]);
 
   React.useEffect(() => {
@@ -141,7 +140,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ state, dispatch, disa
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultAccessMode, defaultVolumeMode]);
+  }, [defaultAccessMode, defaultVolumeMode, state.storageClass]);
 
   return cmLoaded && scLoaded && !scAllowedLoading ? (
     <Form>
@@ -224,36 +223,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ state, dispatch, disa
         </FormPFSelect>
       </FormRow>
       <FormRow fieldId="form-sc-alert">
-        {isScModesKnown ? (
-          <Alert
-            variant="info"
-            isInline
-            title={t(
-              'kubevirt-plugin~Access and Volume modes should follow storage feature matrix',
-            )}
-          >
-            <ExternalLink
-              text={t('kubevirt-plugin~Learn more')}
-              href={STORAGE_CLASS_SUPPORTED_MATRIX_DOC_LINK}
-            />
-          </Alert>
-        ) : (
-          <Alert variant="warning" isInline title={t('kubevirt-plugin~Warning')}>
-            <Stack hasGutter>
-              <StackItem>
-                {t(
-                  'kubevirt-plugin~Config map does not contain suggested access and volume modes for the selected storage class',
-                )}
-              </StackItem>
-              <StackItem>
-                <ExternalLink
-                  text={t('kubevirt-plugin~Learn more')}
-                  href={STORAGE_CLASS_SUPPORTED_MATRIX_DOC_LINK}
-                />
-              </StackItem>
-            </Stack>
-          </Alert>
-        )}
+        <ConfigMapDefaultModesAlert isScModesKnown={isScModesKnown} />
       </FormRow>
     </Form>
   ) : (

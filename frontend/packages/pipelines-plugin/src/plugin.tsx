@@ -91,6 +91,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         name: '%pipelines-plugin~Pipelines%',
         resource: referenceForModel(PipelineModel),
         testID: 'pipeline-header',
+        'data-quickstart-id': 'qs-nav-pipelines',
       },
     },
     flags: {
@@ -107,6 +108,7 @@ const plugin: Plugin<ConsumedExtensions> = [
         // t('pipelines-plugin~Pipelines')
         name: '%pipelines-plugin~Pipelines%',
         href: '/pipelines',
+        'data-quickstart-id': 'qs-nav-pipelines',
       },
     },
     flags: {
@@ -470,10 +472,11 @@ const plugin: Plugin<ConsumedExtensions> = [
     properties: {
       id: 'pipeline',
       url: `/k8s/ns/:namespace/${referenceForModel(PipelineModel)}/~new/builder`,
-      label: 'Pipeline',
+      // t('pipelines-plugin~Pipeline')
+      label: '%pipelines-plugin~Pipeline%',
       // t('pipelines-plugin~Create a Tekton Pipeline to automate delivery of your Application')
       description:
-        '%pipelines-plugin~Create a Tekton Pipeline to automate delivery of your application%',
+        '%pipelines-plugin~Create a Tekton Pipeline to automate delivery of your Application%',
       icon: pipelineIcon,
       accessReview: [
         {
