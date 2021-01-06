@@ -19,6 +19,9 @@ import { ModalBody, ModalTitle, ModalSubmitFooter } from '../factory/modal';
 import { AsyncComponent } from '../utils/async';
 import { SecretModel } from '../../models';
 import { WebHookSecretKey } from '../secret';
+/* eslint-disable import/named */
+import { useTranslation, withTranslation, WithTranslation } from 'react-i18next';
+import i18next, { TFunction } from 'i18next';
 
 export enum SecretTypeAbstraction {
   generic = 'generic',
@@ -30,9 +33,9 @@ export enum SecretTypeAbstraction {
 const secretDisplayType = (abstraction: SecretTypeAbstraction) => {
   switch (abstraction) {
     case 'generic':
-      return 'Key/Value';
+      return i18next.t('secret~Key/Value');
     case 'image':
-      return 'Image Pull';
+      return i18next.t('secret~Image Pull');
     default:
       return _.upperFirst(abstraction);
   }
@@ -56,12 +59,18 @@ export type BasicAuthSubformState = {
 };
 
 const secretFormExplanation = {
-  [SecretTypeAbstraction.generic]:
-    'Key/value secrets let you inject sensitive data into your application as files or environment variables.',
-  [SecretTypeAbstraction.source]: 'Source secrets let you authenticate against a Git server.',
-  [SecretTypeAbstraction.image]:
-    'Image pull secrets let you authenticate against a private image registry.',
-  [SecretTypeAbstraction.webhook]: 'Webhook secrets let you authenticate a webhook trigger.',
+  [SecretTypeAbstraction.generic]: i18next.t(
+    'secret~Key/value secrets let you inject sensitive data into your application as files or environment variables.',
+  ),
+  [SecretTypeAbstraction.source]: i18next.t(
+    'secret~Source secrets let you authenticate against a Git server.',
+  ),
+  [SecretTypeAbstraction.image]: i18next.t(
+    'secret~Image pull secrets let you authenticate against a private image registry.',
+  ),
+  [SecretTypeAbstraction.webhook]: i18next.t(
+    'secret~Webhook secrets let you authenticate a webhook trigger.',
+  ),
 };
 
 const toDefaultSecretType = (typeAbstraction: SecretTypeAbstraction): SecretType => {
@@ -121,174 +130,181 @@ const determineSecretType = (stringData): SecretType => {
 
 // withSecretForm returns SubForm which is a Higher Order Component for all the types of secret forms.
 export const withSecretForm = (SubForm, modal?: boolean) =>
-  class SecretFormComponent extends React.Component<BaseEditSecretProps_, BaseEditSecretState_> {
-    constructor(props) {
-      super(props);
-      const existingSecret = _.pick(props.obj, ['metadata', 'type']);
-      const defaultSecretType = toDefaultSecretType(this.props.secretTypeAbstraction);
-      const secret = _.defaultsDeep({}, props.fixed, existingSecret, {
-        apiVersion: 'v1',
-        data: {},
-        kind: 'Secret',
-        metadata: {
-          name: '',
-        },
-        type: defaultSecretType,
-      });
+  withTranslation()(
+    class SecretFormComponent extends React.Component<BaseEditSecretProps_, BaseEditSecretState_> {
+      constructor(props) {
+        super(props);
+        const existingSecret = _.pick(props.obj, ['metadata', 'type']);
+        const defaultSecretType = toDefaultSecretType(this.props.secretTypeAbstraction);
+        const secret = _.defaultsDeep({}, props.fixed, existingSecret, {
+          apiVersion: 'v1',
+          data: {},
+          kind: 'Secret',
+          metadata: {
+            name: '',
+          },
+          type: defaultSecretType,
+        });
 
-      this.state = {
-        secretTypeAbstraction: this.props.secretTypeAbstraction,
-        secret,
-        inProgress: false,
-        type: defaultSecretType,
-        stringData: _.mapValues(_.get(props.obj, 'data'), (value) => {
-          return value ? Base64.decode(value) : '';
-        }),
-        disableForm: false,
-      };
-      this.onDataChanged = this.onDataChanged.bind(this);
-      this.onNameChanged = this.onNameChanged.bind(this);
-      this.onError = this.onError.bind(this);
-      this.onFormDisable = this.onFormDisable.bind(this);
-      this.save = this.save.bind(this);
-    }
-    onDataChanged(secretsData) {
-      this.setState({
-        stringData: { ...secretsData.stringData },
-      });
-    }
-    onError(err) {
-      this.setState({
-        error: err,
-        inProgress: false,
-      });
-    }
-    onNameChanged(event) {
-      const name = event.target.value;
-      this.setState((state: BaseEditSecretState_) => {
-        const secret = _.cloneDeep(state.secret);
-        secret.metadata.name = name;
-        return { secret };
-      });
-    }
-    onFormDisable(disable) {
-      this.setState({
-        disableForm: disable,
-      });
-    }
-    save(e) {
-      e.preventDefault();
-      const { metadata } = this.state.secret;
-      this.setState({ inProgress: true });
-      const newSecret = _.assign(
-        {},
-        this.state.secret,
-        { stringData: this.state.stringData },
-        // When creating new Secret, determine it's type from the `stringData` keys.
-        // When updating a Secret, use it's type.
-        this.props.isCreate ? { type: determineSecretType(this.state.stringData) } : {},
-      );
-      (this.props.isCreate
-        ? k8sCreate(SecretModel, newSecret)
-        : k8sUpdate(SecretModel, newSecret, metadata.namespace, newSecret.metadata.name)
-      ).then(
-        (secret) => {
-          this.setState({ inProgress: false });
-          if (this.props.onSave) {
-            this.props.onSave(secret.metadata.name);
-          }
-          if (!modal) {
-            history.push(resourceObjPath(secret, referenceFor(secret)));
-          }
-        },
-        (err) => this.setState({ error: err.message, inProgress: false }),
-      );
-    }
+        this.state = {
+          secretTypeAbstraction: this.props.secretTypeAbstraction,
+          secret,
+          inProgress: false,
+          type: defaultSecretType,
+          stringData: _.mapValues(_.get(props.obj, 'data'), (value) => {
+            return value ? Base64.decode(value) : '';
+          }),
+          disableForm: false,
+        };
+        this.onDataChanged = this.onDataChanged.bind(this);
+        this.onNameChanged = this.onNameChanged.bind(this);
+        this.onError = this.onError.bind(this);
+        this.onFormDisable = this.onFormDisable.bind(this);
+        this.save = this.save.bind(this);
+      }
+      onDataChanged(secretsData) {
+        this.setState({
+          stringData: { ...secretsData.stringData },
+        });
+      }
+      onError(err) {
+        this.setState({
+          error: err,
+          inProgress: false,
+        });
+      }
+      onNameChanged(event) {
+        const name = event.target.value;
+        this.setState((state: BaseEditSecretState_) => {
+          const secret = _.cloneDeep(state.secret);
+          secret.metadata.name = name;
+          return { secret };
+        });
+      }
+      onFormDisable(disable) {
+        this.setState({
+          disableForm: disable,
+        });
+      }
+      save(e) {
+        e.preventDefault();
+        const { metadata } = this.state.secret;
+        this.setState({ inProgress: true });
+        const newSecret = _.assign(
+          {},
+          this.state.secret,
+          { stringData: this.state.stringData },
+          // When creating new Secret, determine it's type from the `stringData` keys.
+          // When updating a Secret, use it's type.
+          this.props.isCreate ? { type: determineSecretType(this.state.stringData) } : {},
+        );
+        (this.props.isCreate
+          ? k8sCreate(SecretModel, newSecret)
+          : k8sUpdate(SecretModel, newSecret, metadata.namespace, newSecret.metadata.name)
+        ).then(
+          (secret) => {
+            this.setState({ inProgress: false });
+            if (this.props.onSave) {
+              this.props.onSave(secret.metadata.name);
+            }
+            if (!modal) {
+              history.push(resourceObjPath(secret, referenceFor(secret)));
+            }
+          },
+          (err) => this.setState({ error: err.message, inProgress: false }),
+        );
+      }
 
-    renderBody = () => {
-      return (
-        <>
-          <fieldset disabled={!this.props.isCreate}>
-            <div className="form-group">
-              <label className="control-label co-required" htmlFor="secret-name">
-                Secret Name
-              </label>
-              <div>
-                <input
-                  className="pf-c-form-control"
-                  type="text"
-                  onChange={this.onNameChanged}
-                  value={this.state.secret.metadata.name}
-                  aria-describedby="secret-name-help"
-                  id="secret-name"
-                  required
-                />
-                <p className="help-block" id="secret-name-help">
-                  Unique name of the new secret.
-                </p>
+      renderBody = () => {
+        const { t } = this.props;
+        return (
+          <>
+            <fieldset disabled={!this.props.isCreate}>
+              <div className="form-group">
+                <label className="control-label co-required" htmlFor="secret-name">
+                  {t('secret~Secret Name')}
+                </label>
+                <div>
+                  <input
+                    className="pf-c-form-control"
+                    type="text"
+                    onChange={this.onNameChanged}
+                    value={this.state.secret.metadata.name}
+                    aria-describedby="secret-name-help"
+                    id="secret-name"
+                    required
+                  />
+                  <p className="help-block" id="secret-name-help">
+                    {t('secret~Unique name of the new secret.')}
+                  </p>
+                </div>
               </div>
-            </div>
-          </fieldset>
-          <SubForm
-            onChange={this.onDataChanged}
-            onError={this.onError}
-            onFormDisable={this.onFormDisable}
-            stringData={this.state.stringData}
-            secretType={this.state.secret.type}
-            isCreate={this.props.isCreate}
-          />
-        </>
-      );
-    };
+            </fieldset>
+            <SubForm
+              onChange={this.onDataChanged}
+              onError={this.onError}
+              onFormDisable={this.onFormDisable}
+              stringData={this.state.stringData}
+              secretType={this.state.secret.type}
+              isCreate={this.props.isCreate}
+            />
+          </>
+        );
+      };
 
-    render() {
-      const { secretTypeAbstraction } = this.state;
-      const { onCancel = history.goBack } = this.props;
-      const title = `${this.props.titleVerb} ${secretDisplayType(secretTypeAbstraction)} Secret`;
-      return modal ? (
-        <form className="co-create-secret-form modal-content" onSubmit={this.save}>
-          <ModalTitle>{title}</ModalTitle>
-          <ModalBody>{this.renderBody()}</ModalBody>
-          <ModalSubmitFooter
-            errorMessage={this.state.error || ''}
-            inProgress={this.state.inProgress}
-            submitText="Create"
-            cancel={this.props.onCancel}
-          />
-        </form>
-      ) : (
-        <div className="co-m-pane__body">
-          <Helmet>
-            <title>{title}</title>
-          </Helmet>
-          <form
-            className="co-m-pane__body-group co-create-secret-form co-m-pane__form"
-            onSubmit={this.save}
-          >
-            <h1 className="co-m-pane__heading">{title}</h1>
-            <p className="co-m-pane__explanation">{this.props.explanation}</p>
-            {this.renderBody()}
-            <ButtonBar errorMessage={this.state.error} inProgress={this.state.inProgress}>
-              <ActionGroup className="pf-c-form">
-                <Button
-                  type="submit"
-                  data-test="save-changes"
-                  isDisabled={this.state.disableForm}
-                  variant="primary"
-                  id="save-changes"
-                >
-                  {this.props.saveButtonText || 'Create'}
-                </Button>
-                <Button type="button" variant="secondary" id="cancel" onClick={onCancel}>
-                  Cancel
-                </Button>
-              </ActionGroup>
-            </ButtonBar>
+      render() {
+        const { secretTypeAbstraction } = this.state;
+        const { onCancel = history.goBack } = this.props;
+        const { t } = this.props;
+        const title = t('secret~{{verb}} {{type}} Secret', {
+          verb: this.props.titleVerb,
+          type: secretDisplayType(secretTypeAbstraction),
+        });
+        return modal ? (
+          <form className="co-create-secret-form modal-content" onSubmit={this.save}>
+            <ModalTitle>{title}</ModalTitle>
+            <ModalBody>{this.renderBody()}</ModalBody>
+            <ModalSubmitFooter
+              errorMessage={this.state.error || ''}
+              inProgress={this.state.inProgress}
+              submitText={t('secret~Create')}
+              cancel={this.props.onCancel}
+            />
           </form>
-        </div>
-      );
-    }
-  };
+        ) : (
+          <div className="co-m-pane__body">
+            <Helmet>
+              <title>{title}</title>
+            </Helmet>
+            <form
+              className="co-m-pane__body-group co-create-secret-form co-m-pane__form"
+              onSubmit={this.save}
+            >
+              <h1 className="co-m-pane__heading">{title}</h1>
+              <p className="co-m-pane__explanation">{this.props.explanation}</p>
+              {this.renderBody()}
+              <ButtonBar errorMessage={this.state.error} inProgress={this.state.inProgress}>
+                <ActionGroup className="pf-c-form">
+                  <Button
+                    type="submit"
+                    data-test="save-changes"
+                    isDisabled={this.state.disableForm}
+                    variant="primary"
+                    id="save-changes"
+                  >
+                    {this.props.saveButtonText || t('secret~Create')}
+                  </Button>
+                  <Button type="button" variant="secondary" id="cancel" onClick={onCancel}>
+                    {t('secret~Cancel')}
+                  </Button>
+                </ActionGroup>
+              </ButtonBar>
+            </form>
+          </div>
+        );
+      }
+    },
+  );
 
 const getImageSecretKey = (secretType: SecretType): string => {
   switch (secretType) {
@@ -301,15 +317,19 @@ const getImageSecretKey = (secretType: SecretType): string => {
   }
 };
 
-export class ImageSecretForm extends React.Component<ImageSecretFormProps, ImageSecretFormState> {
+class ImageSecretFormWithTrans extends React.Component<
+  ImageSecretFormProps & WithTranslation,
+  ImageSecretFormState
+> {
   constructor(props) {
     super(props);
     const data = this.props.isCreate ? { '.dockerconfigjson': '{}' } : this.props.stringData;
     let parsedData;
+    const { t } = props;
     try {
       parsedData = _.mapValues(data, JSON.parse);
     } catch (err) {
-      this.props.onError(`Error parsing secret's data: ${err.message}`);
+      this.props.onError(t("secret~Error parsing secret's data: {{message}}", err));
       parsedData = { '.dockerconfigjson': {} };
     }
     this.state = {
@@ -343,9 +363,10 @@ export class ImageSecretForm extends React.Component<ImageSecretFormProps, Image
     this.props.onFormDisable(disable);
   }
   render() {
+    const { t } = this.props;
     const authTypes = {
-      credentials: 'Image Registry Credentials',
-      'config-file': 'Upload Configuration File',
+      credentials: t('secret~Image Registry Credentials'),
+      'config-file': t('secret~Upload Configuration File'),
     };
     const data = _.get(this.state.stringData, this.state.dataKey);
     return (
@@ -353,7 +374,7 @@ export class ImageSecretForm extends React.Component<ImageSecretFormProps, Image
         {this.props.isCreate && (
           <div className="form-group">
             <label className="control-label" htmlFor="secret-type">
-              Authentication Type
+              {t('secret~Authentication Type')}
             </label>
             <div className="co-create-secret__dropdown">
               <Dropdown
@@ -373,12 +394,14 @@ export class ImageSecretForm extends React.Component<ImageSecretFormProps, Image
             onChange={this.onDataChanged}
             stringData={data}
             onDisable={this.onFormDisable}
+            t={this.props.t}
           />
         )}
       </>
     );
   }
 }
+export const ImageSecretForm = withTranslation()(ImageSecretFormWithTrans);
 
 type ConfigEntryFormState = {
   address: string;
@@ -393,6 +416,7 @@ type ConfigEntryFormProps = {
   id: number;
   entry: Object;
   onChange: Function;
+  t: TFunction;
 };
 
 class ConfigEntryForm extends React.Component<ConfigEntryFormProps, ConfigEntryFormState> {
@@ -444,11 +468,12 @@ class ConfigEntryForm extends React.Component<ConfigEntryFormProps, ConfigEntryF
   };
 
   render() {
+    const { t } = this.props;
     return (
       <div className="co-m-pane__body-group" data-test-id="create-image-secret-form">
         <div className="form-group">
           <label className="control-label co-required" htmlFor={`${this.props.id}-address`}>
-            Registry Server Address
+            {t('secret~Registry Server Address')}
           </label>
           <div>
             <input
@@ -464,7 +489,7 @@ class ConfigEntryForm extends React.Component<ConfigEntryFormProps, ConfigEntryF
         </div>
         <div className="form-group">
           <label className="control-label co-required" htmlFor={`${this.props.id}-username`}>
-            Username
+            {t('secret~Username')}
           </label>
           <div>
             <input
@@ -480,7 +505,7 @@ class ConfigEntryForm extends React.Component<ConfigEntryFormProps, ConfigEntryF
         </div>
         <div className="form-group">
           <label className="control-label co-required" htmlFor={`${this.props.id}-password`}>
-            Password
+            {t('secret~Password')}
           </label>
           <div>
             <input
@@ -496,7 +521,7 @@ class ConfigEntryForm extends React.Component<ConfigEntryFormProps, ConfigEntryF
         </div>
         <div className="form-group">
           <label className="control-label" htmlFor={`${this.props.id}-email`}>
-            Email
+            {t('secret~Email')}
           </label>
           <div>
             <input
@@ -529,11 +554,11 @@ type CreateConfigSubformState = {
   }[];
 };
 
-export class CreateConfigSubform extends React.Component<
-  CreateConfigSubformProps,
+class CreateConfigSubformWithTrans extends React.Component<
+  CreateConfigSubformProps & WithTranslation,
   CreateConfigSubformState
 > {
-  constructor(props: CreateConfigSubformProps) {
+  constructor(props: CreateConfigSubformProps & WithTranslation) {
     super(props);
     this.state = {
       // If user creates a new image secret by filling out the form a 'kubernetes.io/dockerconfigjson' secret will be created.
@@ -634,6 +659,7 @@ export class CreateConfigSubform extends React.Component<
     );
   }
   render() {
+    const { t } = this.props;
     const secretEntriesList = _.map(this.state.secretEntriesArray, (entryData, index) => {
       return (
         <div className="co-add-remove-form__entry" key={entryData.uid}>
@@ -641,11 +667,16 @@ export class CreateConfigSubform extends React.Component<
             <div className="co-add-remove-form__link--remove-entry">
               <Button onClick={() => this.removeEntry(index)} type="button" variant="link">
                 <MinusCircleIcon className="co-icon-space-r" />
-                Remove Credentials
+                {t('secret~Remove Credentials')}
               </Button>
             </div>
           )}
-          <ConfigEntryForm id={index} entry={entryData.entry} onChange={this.onDataChanged} />
+          <ConfigEntryForm
+            id={index}
+            entry={entryData.entry}
+            onChange={this.onDataChanged}
+            t={this.props.t}
+          />
         </div>
       );
     });
@@ -659,12 +690,13 @@ export class CreateConfigSubform extends React.Component<
           variant="link"
         >
           <PlusCircleIcon className="co-icon-space-r" />
-          Add Credentials
+          {t('secret~Add Credentials')}
         </Button>
       </>
     );
   }
 }
+export const CreateConfigSubform = withTranslation()(CreateConfigSubformWithTrans);
 
 class UploadConfigSubform extends React.Component<
   UploadConfigSubformProps,
@@ -698,20 +730,23 @@ class UploadConfigSubform extends React.Component<
     );
   }
   render() {
+    const { t } = this.props;
     return (
       <>
         <DroppableFileInput
           onChange={this.onFileChange}
           inputFileData={this.state.configFile}
           id="docker-config"
-          label="Configuration File"
-          inputFieldHelpText="Upload a .dockercfg or .docker/config.json file."
-          textareaFieldHelpText="File with credentials and other configuration for connecting to a secured image registry."
+          label={t('secret~Configuration File')}
+          inputFieldHelpText={t('secret~Upload a .dockercfg or .docker/config.json file.')}
+          textareaFieldHelpText={t(
+            'secret~File with credentials and other configuration for connecting to a secured image registry.',
+          )}
           isRequired={true}
         />
         {this.state.parseError && (
           <div className="co-create-secret-warning">
-            Configuration file should be in JSON format.
+            {t('secret~Configuration file should be in JSON format.')}
           </div>
         )}
       </>
@@ -719,7 +754,10 @@ class UploadConfigSubform extends React.Component<
   }
 }
 
-class WebHookSecretForm extends React.Component<WebHookSecretFormProps, WebHookSecretFormState> {
+class WebHookSecretFormWithTrans extends React.Component<
+  WebHookSecretFormProps,
+  WebHookSecretFormState
+> {
   constructor(props) {
     super(props);
     this.state = {
@@ -745,10 +783,11 @@ class WebHookSecretForm extends React.Component<WebHookSecretFormProps, WebHookS
     );
   }
   render() {
+    const { t } = this.props;
     return (
       <div className="form-group">
         <label className="control-label co-required" htmlFor="webhook-secret-key">
-          Webhook Secret Key
+          {t('secret~Webhook Secret Key')}
         </label>
         <div className="pf-c-input-group">
           <input
@@ -766,18 +805,19 @@ class WebHookSecretForm extends React.Component<WebHookSecretFormProps, WebHookS
             onClick={this.generateWebHookSecret}
             className="pf-c-button pf-m-tertiary"
           >
-            Generate
+            {t('secret~Generate')}
           </button>
         </div>
         <p className="help-block" id="webhook-secret-help">
-          Value of the secret will be supplied when invoking the webhook.{' '}
+          {t('secret~Value of the secret will be supplied when invoking the webhook.')}
         </p>
       </div>
     );
   }
 }
+const WebHookSecretForm = withTranslation()(WebHookSecretFormWithTrans);
 
-export class SourceSecretForm extends React.Component<
+class SourceSecretFormWithTrans extends React.Component<
   SourceSecretFormProps,
   SourceSecretFormState
 > {
@@ -808,16 +848,17 @@ export class SourceSecretForm extends React.Component<
     );
   }
   render() {
+    const { t } = this.props;
     const authTypes = {
-      [SecretType.basicAuth]: 'Basic Authentication',
-      [SecretType.sshAuth]: 'SSH Key',
+      [SecretType.basicAuth]: t('secret~Basic Authentication'),
+      [SecretType.sshAuth]: t('secret~SSH Key'),
     };
     return (
       <>
         {this.props.isCreate ? (
           <div className="form-group">
             <label className="control-label" htmlFor="secret-type">
-              Authentication Type
+              {t('secret~Authentication Type')}
             </label>
             <div className="co-create-secret__dropdown">
               <Dropdown
@@ -839,8 +880,9 @@ export class SourceSecretForm extends React.Component<
     );
   }
 }
+export const SourceSecretForm = withTranslation()(SourceSecretFormWithTrans);
 
-export class BasicAuthSubform extends React.Component<
+class BasicAuthSubformWithTrans extends React.Component<
   BasicAuthSubformProps,
   BasicAuthSubformState
 > {
@@ -861,11 +903,12 @@ export class BasicAuthSubform extends React.Component<
     );
   }
   render() {
+    const { t } = this.props;
     return (
       <>
         <div className="form-group">
           <label className="control-label" htmlFor="username">
-            Username
+            {t('secret~Username')}
           </label>
           <div>
             <input
@@ -878,13 +921,13 @@ export class BasicAuthSubform extends React.Component<
               value={this.state.username}
             />
             <p className="help-block" id="username-help">
-              Optional username for Git authentication.
+              {t('secret~Optional username for Git authentication.')}
             </p>
           </div>
         </div>
         <div className="form-group">
           <label className="control-label co-required" htmlFor="password">
-            Password or Token
+            {t('secret~Password or Token')}
           </label>
           <div>
             <input
@@ -898,8 +941,9 @@ export class BasicAuthSubform extends React.Component<
               required
             />
             <p className="help-block" id="password-help">
-              Password or token for Git authentication. Required if a ca.crt or .gitconfig file is
-              not specified.
+              {t(
+                'secret~Password or token for Git authentication. Required if a ca.crt or .gitconfig file is not specified.',
+              )}
             </p>
           </div>
         </div>
@@ -907,6 +951,7 @@ export class BasicAuthSubform extends React.Component<
     );
   }
 }
+export const BasicAuthSubform = withTranslation()(BasicAuthSubformWithTrans);
 
 const DroppableFileInput = (props) => (
   <AsyncComponent
@@ -915,7 +960,7 @@ const DroppableFileInput = (props) => (
   />
 );
 
-export class SSHAuthSubform extends React.Component<SSHAuthSubformProps, SSHAuthSubformState> {
+class SSHAuthSubformWithTrans extends React.Component<SSHAuthSubformProps, SSHAuthSubformState> {
   constructor(props) {
     super(props);
     this.state = {
@@ -943,19 +988,23 @@ export class SSHAuthSubform extends React.Component<SSHAuthSubformProps, SSHAuth
     );
   }
   render() {
+    const { t } = this.props;
     return (
       <DroppableFileInput
         onChange={this.onFileChange}
         inputFileData={this.state['ssh-privatekey']}
         id="ssh-privatekey"
-        label="SSH Private Key"
-        inputFieldHelpText="Drag and drop file with your private SSH key here or browse to upload it."
-        textareaFieldHelpText="Private SSH key file for Git authentication."
+        label={t('secret~SSH Private Key')}
+        inputFieldHelpText={t(
+          'secret~Drag and drop file with your private SSH key here or browse to upload it.',
+        )}
+        textareaFieldHelpText={t('secret~Private SSH key file for Git authentication.')}
         isRequired={true}
       />
     );
   }
 }
+export const SSHAuthSubform = withTranslation()(SSHAuthSubformWithTrans);
 
 type KeyValueEntryFormState = {
   key: string;
@@ -966,6 +1015,7 @@ type KeyValueEntryFormProps = {
   entry: KeyValueEntryFormState;
   id: number;
   onChange: Function;
+  t: TFunction;
 };
 
 type GenericSecretFormProps = {
@@ -974,6 +1024,7 @@ type GenericSecretFormProps = {
     [key: string]: string;
   };
   isCreate: boolean;
+  t: TFunction;
 };
 
 type GenericSecretFormState = {
@@ -983,7 +1034,10 @@ type GenericSecretFormState = {
   }[];
 };
 
-class GenericSecretForm extends React.Component<GenericSecretFormProps, GenericSecretFormState> {
+class GenericSecretFormWithTrans extends React.Component<
+  GenericSecretFormProps,
+  GenericSecretFormState
+> {
   constructor(props) {
     super(props);
     this.state = {
@@ -1061,6 +1115,7 @@ class GenericSecretForm extends React.Component<GenericSecretFormProps, GenericS
     );
   }
   render() {
+    const { t } = this.props;
     const secretEntriesList = _.map(this.state.secretEntriesArray, (entryData, index) => {
       return (
         <div className="co-add-remove-form__entry" key={entryData.uid}>
@@ -1068,11 +1123,16 @@ class GenericSecretForm extends React.Component<GenericSecretFormProps, GenericS
             <div className="co-add-remove-form__link--remove-entry">
               <Button type="button" onClick={() => this.removeEntry(index)} variant="link">
                 <MinusCircleIcon className="co-icon-space-r" />
-                Remove Key/Value
+                {t('secret~Remove Key/Value')}
               </Button>
             </div>
           )}
-          <KeyValueEntryForm id={index} entry={entryData.entry} onChange={this.onDataChanged} />
+          <KeyValueEntryForm
+            id={index}
+            entry={entryData.entry}
+            onChange={this.onDataChanged}
+            t={this.props.t}
+          />
         </div>
       );
     });
@@ -1086,12 +1146,13 @@ class GenericSecretForm extends React.Component<GenericSecretFormProps, GenericS
           variant="link"
         >
           <PlusCircleIcon className="co-icon-space-r" />
-          Add Key/Value
+          {t('secret~Add Key/Value')}
         </Button>
       </>
     );
   }
 }
+const GenericSecretForm = withTranslation()(GenericSecretFormWithTrans);
 
 class KeyValueEntryForm extends React.Component<KeyValueEntryFormProps, KeyValueEntryFormState> {
   constructor(props) {
@@ -1120,11 +1181,12 @@ class KeyValueEntryForm extends React.Component<KeyValueEntryFormProps, KeyValue
     );
   }
   render() {
+    const { t } = this.props;
     return (
       <div className="co-create-generic-secret__form">
         <div className="form-group">
           <label className="control-label co-required" htmlFor={`${this.props.id}-key`}>
-            Key
+            {t('secret~Key')}
           </label>
           <div>
             <input
@@ -1145,7 +1207,9 @@ class KeyValueEntryForm extends React.Component<KeyValueEntryFormProps, KeyValue
               inputFileData={this.state.value}
               id={`${this.props.id}-value`}
               label="Value"
-              inputFieldHelpText="Drag and drop file with your value here or browse to upload it."
+              inputFieldHelpText={t(
+                'secret~Drag and drop file with your value here or browse to upload it.',
+              )}
             />
           </div>
         </div>
@@ -1209,7 +1273,10 @@ class SecretLoadingWrapper extends React.Component<
   }
 }
 
-export class CreateSecret extends React.Component<CreateSecretProps, CreateSecretState> {
+class CreateSecretWithTrans extends React.Component<
+  CreateSecretProps & WithTranslation,
+  CreateSecretState
+> {
   readonly state: CreateSecretState = {
     formComponent: secretFormFactory(this.props.match.params.type),
     secretTypeAbstraction: this.props.match.params.type,
@@ -1218,17 +1285,19 @@ export class CreateSecret extends React.Component<CreateSecretProps, CreateSecre
     const { secretTypeAbstraction, formComponent } = this.state;
     const { params } = this.props.match;
     const SecretFormComponent = formComponent;
+    const { t } = this.props;
     return (
       <SecretFormComponent
         fixed={{ metadata: { namespace: params.ns } }}
         secretTypeAbstraction={secretTypeAbstraction}
         explanation={secretFormExplanation[params.type]}
-        titleVerb="Create"
+        titleVerb={t('secret~Create')}
         isCreate={true}
       />
     );
   }
 }
+export const CreateSecret = withTranslation()(CreateSecretWithTrans);
 
 type CreateSecretProps = {
   match: {
@@ -1237,6 +1306,7 @@ type CreateSecretProps = {
       ns: string;
     };
   };
+  t: TFunction;
 };
 
 type CreateSecretState = {
@@ -1244,13 +1314,20 @@ type CreateSecretState = {
   secretTypeAbstraction: SecretTypeAbstraction;
 };
 
-export const EditSecret = ({ match: { params }, kind }) => (
-  <Firehose
-    resources={[{ kind, name: params.name, namespace: params.ns, isList: false, prop: 'obj' }]}
-  >
-    <SecretLoadingWrapper fixedKeys={['kind', 'metadata']} titleVerb="Edit" saveButtonText="Save" />
-  </Firehose>
-);
+export const EditSecret = ({ match: { params }, kind }) => {
+  const { t } = useTranslation();
+  return (
+    <Firehose
+      resources={[{ kind, name: params.name, namespace: params.ns, isList: false, prop: 'obj' }]}
+    >
+      <SecretLoadingWrapper
+        fixedKeys={['kind', 'metadata']}
+        titleVerb={t('secret~Edit')}
+        saveButtonText={t('secret~Save')}
+      />
+    </Firehose>
+  );
+};
 
 type SecretLoadingWrapperProps = {
   obj?: {
@@ -1290,6 +1367,7 @@ type BaseEditSecretProps_ = {
   explanation?: string;
   onCancel?: () => void;
   onSave?: (name: string) => void;
+  t: TFunction;
 };
 
 type BasicAuthSubformProps = {
@@ -1297,6 +1375,7 @@ type BasicAuthSubformProps = {
   stringData: {
     [key: string]: string;
   };
+  t: TFunction;
 };
 
 type ImageSecretFormState = {
@@ -1337,6 +1416,7 @@ type UploadConfigSubformProps = {
   stringData: {
     [key: string]: Object;
   };
+  t: TFunction;
 };
 
 type SSHAuthSubformState = {
@@ -1348,6 +1428,7 @@ type SSHAuthSubformProps = {
   stringData: {
     [key: string]: string;
   };
+  t: TFunction;
 };
 
 type SourceSecretFormState = {
@@ -1365,6 +1446,7 @@ type SourceSecretFormProps = {
   };
   secretType: SecretType;
   isCreate: boolean;
+  t: TFunction;
 };
 
 type WebHookSecretFormState = {
@@ -1378,4 +1460,5 @@ type WebHookSecretFormProps = {
   stringData: {
     WebHookSecretKey: string;
   };
+  t: TFunction;
 };

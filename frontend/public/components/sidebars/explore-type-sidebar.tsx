@@ -11,6 +11,7 @@ import {
   SwaggerDefinitions,
 } from '../../module/k8s';
 import { CamelCaseWrap, EmptyBox, LinkifyExternal } from '../utils';
+import i18next from 'i18next';
 
 const getRef = (definition: SwaggerDefinition): string => {
   const ref = definition.$ref || _.get(definition, 'items.$ref');
@@ -148,7 +149,7 @@ export const ExploreType: React.FC<ExploreTypeProps> = (props) => {
                     isInline
                     variant="link"
                   >
-                    View details
+                    {i18next.t('View details')}
                   </Button>
                 )}
               </li>

@@ -13,6 +13,7 @@ import {
 } from '../../module/k8s/';
 import { RowVolumeData } from '../volumes-table';
 import { YellowExclamationTriangleIcon } from '@console/shared';
+import { Trans, useTranslation } from 'react-i18next';
 
 export const RemoveVolumeModal: React.FC<RemoveVolumeModalProps> = (props) => {
   const [inProgress, setInProgress] = React.useState(false);
@@ -72,24 +73,31 @@ export const RemoveVolumeModal: React.FC<RemoveVolumeModalProps> = (props) => {
 
   const { kind, resource, volume } = props;
   const type: string = _.get(getVolumeType(volume.volumeDetail), 'id', '');
+  const { t } = useTranslation();
+  const volumeName = volume.name;
+  const { label } = kind;
+  const { name } = resource.metadata;
+
   return (
     <form onSubmit={submit} className="modal-content">
       <ModalTitle>
-        <YellowExclamationTriangleIcon className="co-icon-space-r" /> Remove Volume?
+        <YellowExclamationTriangleIcon className="co-icon-space-r" /> {t('modal~Remove Volume?')}
       </ModalTitle>
       <ModalBody className="modal-body">
         <div>
-          Are you sure you want to remove volume{' '}
-          <strong className="co-break-word">{volume.name}</strong>
-          <span>
-            {' '}
-            from <strong>{kind.label}</strong>: <strong>{resource.metadata.name}</strong>?
-          </span>
+          <Trans i18nKey="modal~removeVolumeConfirm">
+            Are you sure you want to remove volume{' '}
+            <strong className="co-break-word">{{ volumeName }}</strong>
+            <span>
+              {' '}
+              from <strong>{{ label }}</strong>: <strong>{{ name }}</strong>?
+            </span>
+          </Trans>
         </div>
         {type && (
           <div>
             <label className="control-label">
-              Note: This will not remove the underlying {type}.
+              {t('modal~Note: This will not remove the underlying {{type}}.', { type })}
             </label>
           </div>
         )}
@@ -98,7 +106,7 @@ export const RemoveVolumeModal: React.FC<RemoveVolumeModalProps> = (props) => {
         errorMessage={errorMessage}
         inProgress={inProgress}
         submitDanger
-        submitText="Remove Volume"
+        submitText={t('modal~Remove Volume')}
         cancel={props.cancel}
       />
     </form>

@@ -3,6 +3,7 @@
   "Status": "Status",
   "Version": "Version",
   "Message": "Message",
+  "versions": "versions",
   "{{resource}} details": "{{resource}} details",
   "Conditions": "Conditions",
   "Operand versions": "Operand versions",

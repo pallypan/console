@@ -7,9 +7,12 @@ import { DeploymentModel } from '../../models';
 import { createModalLauncher, ModalTitle, ModalBody, ModalSubmitFooter } from '../factory/modal';
 import { pluralize, withHandlePromise, HandlePromiseProps } from '../utils';
 import { RadioInput } from '../radio';
+import { useTranslation } from 'react-i18next';
+import i18next from 'i18next';
 
-export const UPDATE_STRATEGY_DESCRIPTION =
-  'How should the pods be replaced when a new revision is created?';
+export const UPDATE_STRATEGY_DESCRIPTION = i18next.t(
+  'modal~How should the pods be replaced when a new revision is created?',
+);
 
 export const getNumberOrPercent = (value) => {
   if (typeof value === 'undefined') {
@@ -23,6 +26,7 @@ export const getNumberOrPercent = (value) => {
 };
 
 export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (props) => {
+  const { t } = useTranslation();
   const { showDescription = true } = props;
   return (
     <>
@@ -40,19 +44,21 @@ export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (
             }}
             value="RollingUpdate"
             checked={props.strategyType === 'RollingUpdate'}
-            title="RollingUpdate"
-            subTitle="(default)"
+            title={t('modal~RollingUpdate')}
+            subTitle={t('modal~(default)')}
             autoFocus={props.strategyType === 'RollingUpdate'}
           >
             <div className="co-m-radio-desc">
               <p className="text-muted">
-                Execute a smooth roll out of the new revision, based on the settings below
+                {t(
+                  'modal~Execute a smooth roll out of the new revision, based on the settings below',
+                )}
               </p>
 
               <div className="row co-m-form-row">
                 <div className="col-sm-3">
                   <label htmlFor="input-max-unavailable" className="control-label">
-                    Max Unavailable
+                    {t('modal~Max Unavailable')}
                   </label>
                 </div>
                 <div className="co-m-form-col col-sm-9">
@@ -71,15 +77,19 @@ export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (
                       />
                       {props.replicas && (
                         <span className="pf-c-input-group__text">
-                          <Tooltip content="Current desired pod count">
-                            <span>of {pluralize(props.replicas, 'pod')}</span>
+                          <Tooltip content={t('modal~Current desired pod count')}>
+                            <span>
+                              {t('modal~of {{pods}}', { pods: pluralize(props.replicas, 'pod') })}
+                            </span>
                           </Tooltip>
                         </span>
                       )}
                     </div>
                   </div>
                   <p className="help-block text-muted" id="input-max-unavailable-help">
-                    Number or percentage of total pods at the start of the update (optional)
+                    {t(
+                      'modal~Number or percentage of total pods at the start of the update (optional)',
+                    )}
                   </p>
                 </div>
               </div>
@@ -87,7 +97,7 @@ export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (
               <div className="row co-m-form-row">
                 <div className="col-sm-3">
                   <label htmlFor="input-max-surge" className="control-label">
-                    Max Surge
+                    {t('modal~Max Surge')}
                   </label>
                 </div>
                 <div className="co-m-form-col col-sm-9">
@@ -105,14 +115,20 @@ export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (
                         aria-describedby="input-max-surge-help"
                       />
                       <span className="pf-c-input-group__text">
-                        <Tooltip content="Current desired pod count">
-                          <span>greater than {pluralize(props.replicas, 'pod')}</span>
+                        <Tooltip content={t('modal~Current desired pod count')}>
+                          <span>
+                            {t('modal~greater than {{pods}}', {
+                              pods: pluralize(props.replicas, 'pod'),
+                            })}
+                          </span>
                         </Tooltip>
                       </span>
                     </div>
                   </div>
                   <p className="help-block text-muted" id="input-max-surge-help">
-                    Number or percentage of total pods at the start of the update (optional)
+                    {t(
+                      'modal~Number or percentage of total pods at the start of the update (optional)',
+                    )}
                   </p>
                 </div>
               </div>
@@ -128,8 +144,8 @@ export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (
             }}
             value="Recreate"
             checked={props.strategyType === 'Recreate'}
-            title="Recreate"
-            desc="Shut down all existing pods before creating new ones"
+            title={t('modal~Recreate')}
+            desc={t('modal~Shut down all existing pods before creating new ones')}
             autoFocus={props.strategyType === 'Recreate'}
           />
         </div>
@@ -168,9 +184,10 @@ export const ConfigureUpdateStrategyModal = withHandlePromise(
       props.handlePromise(promise, props.close);
     };
 
+    const { t } = useTranslation();
     return (
       <form onSubmit={submit} name="form" className="modal-content">
-        <ModalTitle>Edit Update Strategy</ModalTitle>
+        <ModalTitle>{t('modal~Edit Update Strategy')}</ModalTitle>
         <ModalBody>
           <ConfigureUpdateStrategy
             strategyType={strategyType}
@@ -184,7 +201,7 @@ export const ConfigureUpdateStrategyModal = withHandlePromise(
         <ModalSubmitFooter
           errorMessage={props.errorMessage}
           inProgress={props.inProgress}
-          submitText="Save"
+          submitText={t('modal~Save')}
           cancel={props.cancel}
         />
       </form>

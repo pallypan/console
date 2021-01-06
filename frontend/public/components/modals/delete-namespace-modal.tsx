@@ -14,6 +14,7 @@ import {
   YellowExclamationTriangleIcon,
 } from '@console/shared';
 import { usePromiseHandler } from '@console/shared/src/hooks/promise-handler';
+import { useTranslation, Trans } from 'react-i18next';
 
 export const DeleteNamespaceModal: React.FC<DeleteNamespaceModalProps> = ({
   cancel,
@@ -42,33 +43,39 @@ export const DeleteNamespaceModal: React.FC<DeleteNamespaceModalProps> = ({
   const onKeyUp = (e) => {
     setConfirmed(e.currentTarget.value === resource.metadata.name);
   };
+  const { t } = useTranslation();
+  const { name } = resource.metadata;
 
   return (
     <form onSubmit={onSubmit} name="form" className="modal-content ">
       <ModalTitle className="modal-header">
-        <YellowExclamationTriangleIcon className="co-icon-space-r" /> Delete {kind.label}?
+        <YellowExclamationTriangleIcon className="co-icon-space-r" />{' '}
+        {t('modal~Delete {{label}}?', kind)}
       </ModalTitle>
       <ModalBody>
         <p>
-          This action cannot be undone. It will destroy all pods, services and other objects in the
-          namespace <strong className="co-break-word">{resource.metadata.name}</strong>.
+          <Trans i18nKey="modal~deleteNSWarning">
+            This action cannot be undone. It will destroy all pods, services and other objects in
+            the namespace <strong className="co-break-word">{{ name }}</strong>.
+          </Trans>
         </p>
         <p>
-          Confirm deletion by typing{' '}
-          <strong className="co-break-word">{resource.metadata.name}</strong> below:
+          <Trans i18nKey="modal~deleteNSConfirm">
+            Confirm deletion by typing <strong className="co-break-word">{{ name }}</strong> below:
+          </Trans>
         </p>
         <input
           type="text"
           data-test="project-name-input"
           className="pf-c-form-control"
           onKeyUp={onKeyUp}
-          placeholder="Enter name"
-          aria-label={`Enter the name of the ${kind.label} to delete`}
+          placeholder={t('modal~Enter name')}
+          aria-label={t('modal~Enter the name of the {{label}} to delete', kind)}
           autoFocus={true}
         />
       </ModalBody>
       <ModalSubmitFooter
-        submitText="Delete"
+        submitText={t('modal~Delete')}
         submitDisabled={!confirmed}
         cancel={() => cancel?.()}
         errorMessage={errorMessage}

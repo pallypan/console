@@ -20,6 +20,7 @@ import { PersistentVolumeClaimModel } from '../../models';
 import { ContainerSelector } from '../container-selector';
 import { PVCDropdown } from '../utils/pvc-dropdown';
 import { PodTemplate, PersistentVolumeClaimKind, Patch } from '../../../public/module/k8s/types';
+import { useTranslation, Trans } from 'react-i18next';
 
 export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
   const [obj, setObj] = React.useState(null);
@@ -48,6 +49,8 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
     'StatefulSet',
     'DaemonSet',
   ];
+
+  const { t } = useTranslation();
 
   React.useEffect(() => {
     // Get the current resource so we can add to its definition
@@ -112,7 +115,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
 
   const validateMountPaths = (path: string) => {
     const existingMountPaths = getMountPaths(obj.spec.template);
-    const err = existingMountPaths.includes(path) ? 'Mount path is already in use.' : '';
+    const err = existingMountPaths.includes(path) ? t('storage~Mount path is already in use.') : '';
     setError(err);
   };
 
@@ -137,7 +140,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
   const validateDevicePath = (path: string) => {
     const existingDevicePaths = getDevicePaths(obj.spec.template);
     if (existingDevicePaths.includes(path)) {
-      setError('Device path is already in use.');
+      setError(t('storage~Device path is already in use.'));
     }
   };
 
@@ -246,7 +249,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
   const save = (event: React.FormEvent<EventTarget>) => {
     event.preventDefault();
     if (useContainerSelector && selectedContainers.length === 0) {
-      setError('You must choose at least one container to mount to.');
+      setError(t('storage~You must choose at least one container to mount to.'));
       return;
     }
     setInProgress(true);
@@ -264,7 +267,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
     );
   };
 
-  const title = 'Add Storage';
+  const title = t('storage~Add Storage');
   return (
     <div className="co-m-pane__body">
       <Helmet>
@@ -274,14 +277,16 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
         <h1 className="co-m-pane__heading">{title}</h1>
         {kindObj && (
           <div className="co-m-pane__explanation">
-            Add a persistent volume claim to{' '}
-            <ResourceLink inline kind={kindObj.kind} name={resourceName} namespace={namespace} />
+            <Trans i18nKey="storage~addVolumeTo">
+              Add a persistent volume claim to{' '}
+              <ResourceLink inline kind={kindObj.kind} name={resourceName} namespace={namespace} />
+            </Trans>
           </div>
         )}
-        <label className="control-label co-required">Persistent Volume Claim</label>
+        <label className="control-label co-required">{t('storage~Persistent Volume Claim')}</label>
         <div className="form-group">
           <RadioInput
-            title="Use existing claim"
+            title={t('storage~Use existing claim')}
             value="existing"
             key="existing"
             onChange={handleShowCreatePVCChange}
@@ -302,7 +307,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
         )}
         <div className="form-group">
           <RadioInput
-            title="Create new claim"
+            title={t('storage~Create new claim')}
             value="new"
             key="new"
             onChange={handleShowCreatePVCChange}
@@ -320,7 +325,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
         {claimVolumeMode === 'Block' ? (
           <div className="form-group">
             <label className="control-label co-required" htmlFor="device-path">
-              Device Path
+              {t('storage~Device Path')}
             </label>
             <div>
               <input
@@ -334,14 +339,14 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
                 required
               />
               <p className="help-block" id="volume-device-help">
-                Device path for the block volume inside the container.
+                {t('storage~Device path for the block volume inside the container.')}
               </p>
             </div>
           </div>
         ) : (
           <div className="form-group">
             <label className="control-label co-required" htmlFor="mount-path">
-              Mount Path
+              {t('storage~Mount Path')}
             </label>
             <div>
               <input
@@ -355,18 +360,18 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
                 required
               />
               <p className="help-block" id="mount-path-help">
-                Mount path for the volume inside the container.
+                {t('storage~Mount path for the volume inside the container.')}
               </p>
             </div>
             <Checkbox
-              label="Mount as read-only"
+              label={t('storage~Mount as read-only')}
               onChange={onMountAsReadOnlyChanged}
               checked={mountAsReadOnly}
               name="mountAsReadOnly"
             />
             <div className="form-group">
               <label className="control-label" htmlFor="subpath">
-                Subpath
+                {t('storage~Subpath')}
               </label>
               <div>
                 <input
@@ -379,8 +384,9 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
                   value={subPath}
                 />
                 <p className="help-block" id="subpath-help">
-                  Optional path within the volume from which it will be mounted into the container.
-                  Defaults to the root of volume.
+                  {t(
+                    'storage~Optional path within the volume from which it will be mounted into the container. Defaults to the root of volume.',
+                  )}
                 </p>
               </div>
             </div>
@@ -389,18 +395,20 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
 
         {!useContainerSelector && (
           <p>
-            The volume will be mounted into all containers. You can{' '}
-            <Button type="button" onClick={handleSelectContainers} variant="link" isInline>
-              select specific containers
-            </Button>{' '}
-            instead.
+            <Trans i18nKey="storage~volumeMount">
+              The volume will be mounted into all containers. You can{' '}
+              <Button type="button" onClick={handleSelectContainers} variant="link" isInline>
+                select specific containers
+              </Button>{' '}
+              instead.
+            </Trans>
           </p>
         )}
         {useContainerSelector && (
           <div className="form-group co-break-word">
-            <label className="control-label">Containers</label>
+            <label className="control-label">{t('storage~Containers')}</label>
             <Button type="button" onClick={handleSelectContainers} variant="link">
-              (use all containers)
+              {t('storage~(use all containers)')}
             </Button>
             <ContainerSelector
               containers={obj.spec.template.spec.containers}
@@ -408,17 +416,17 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
               onChange={handleContainerSelectionChange}
             />
             <p className="help-block" id="subpath-help">
-              Select which containers to mount volume into.
+              {t('storage~Select which containers to mount volume into.')}
             </p>
           </div>
         )}
         <ButtonBar errorMessage={error} inProgress={inProgress}>
           <ActionGroup className="pf-c-form">
             <Button type="submit" variant="primary" id="save-changes">
-              Save
+              {t('storage~Save')}
             </Button>
             <Button type="button" variant="secondary" onClick={history.goBack}>
-              Cancel
+              {t('storage~Cancel')}
             </Button>
           </ActionGroup>
         </ButtonBar>
