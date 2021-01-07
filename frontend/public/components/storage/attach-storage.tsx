@@ -346,7 +346,7 @@ export const AttachStorageForm: React.FC<AttachStorageFormProps> = (props) => {
         ) : (
           <div className="form-group">
             <label className="control-label co-required" htmlFor="mount-path">
-              {t('storage~Mount Path')}
+              {t('storage~Mount path')}
             </label>
             <div>
               <input
