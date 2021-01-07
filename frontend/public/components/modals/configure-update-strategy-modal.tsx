@@ -5,7 +5,7 @@ import { Tooltip } from '@patternfly/react-core';
 import { k8sPatch, Patch, DeploymentUpdateStrategy, K8sResourceKind } from '../../module/k8s';
 import { DeploymentModel } from '../../models';
 import { createModalLauncher, ModalTitle, ModalBody, ModalSubmitFooter } from '../factory/modal';
-import { pluralize, withHandlePromise, HandlePromiseProps } from '../utils';
+import { withHandlePromise, HandlePromiseProps } from '../utils';
 import { RadioInput } from '../radio';
 import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
@@ -58,7 +58,7 @@ export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (
               <div className="row co-m-form-row">
                 <div className="col-sm-3">
                   <label htmlFor="input-max-unavailable" className="control-label">
-                    {t('modal~Max Unavailable')}
+                    {t('modal~Max unavailable')}
                   </label>
                 </div>
                 <div className="co-m-form-col col-sm-9">
@@ -78,9 +78,7 @@ export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (
                       {props.replicas && (
                         <span className="pf-c-input-group__text">
                           <Tooltip content={t('modal~Current desired pod count')}>
-                            <span>
-                              {t('modal~of {{pods}}', { pods: pluralize(props.replicas, 'pod') })}
-                            </span>
+                            <span>{t('modal~of {{count}} pod', { count: props.replicas })}</span>
                           </Tooltip>
                         </span>
                       )}
@@ -97,7 +95,7 @@ export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (
               <div className="row co-m-form-row">
                 <div className="col-sm-3">
                   <label htmlFor="input-max-surge" className="control-label">
-                    {t('modal~Max Surge')}
+                    {t('modal~Max surge')}
                   </label>
                 </div>
                 <div className="co-m-form-col col-sm-9">
@@ -117,9 +115,7 @@ export const ConfigureUpdateStrategy: React.FC<ConfigureUpdateStrategyProps> = (
                       <span className="pf-c-input-group__text">
                         <Tooltip content={t('modal~Current desired pod count')}>
                           <span>
-                            {t('modal~greater than {{pods}}', {
-                              pods: pluralize(props.replicas, 'pod'),
-                            })}
+                            {t('modal~greater than {{count}} pod', { count: props.replicas })}
                           </span>
                         </Tooltip>
                       </span>
@@ -187,7 +183,7 @@ export const ConfigureUpdateStrategyModal = withHandlePromise(
     const { t } = useTranslation();
     return (
       <form onSubmit={submit} name="form" className="modal-content">
-        <ModalTitle>{t('modal~Edit Update Strategy')}</ModalTitle>
+        <ModalTitle>{t('modal~Edit update strategy')}</ModalTitle>
         <ModalBody>
           <ConfigureUpdateStrategy
             strategyType={strategyType}
