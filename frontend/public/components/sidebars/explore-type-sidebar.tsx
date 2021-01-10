@@ -11,7 +11,7 @@ import {
   SwaggerDefinitions,
 } from '../../module/k8s';
 import { CamelCaseWrap, EmptyBox, LinkifyExternal } from '../utils';
-import i18next from 'i18next';
+import { useTranslation } from 'react-i18next';
 
 const getRef = (definition: SwaggerDefinition): string => {
   const ref = definition.$ref || _.get(definition, 'items.$ref');
@@ -24,6 +24,7 @@ export const ExploreType: React.FC<ExploreTypeProps> = (props) => {
   // Track the previously selected items to build breadcrumbs. Each history
   // entry contains the name, description, and path to the definition in the
   // OpenAPI document.
+  const { t } = useTranslation();
   const [drilldownHistory, setDrilldownHistory] = React.useState([]);
   const { kindObj, schema } = props;
   if (!kindObj && !schema) {
@@ -149,7 +150,7 @@ export const ExploreType: React.FC<ExploreTypeProps> = (props) => {
                     isInline
                     variant="link"
                   >
-                    {i18next.t('View details')}
+                    {t('View details')}
                   </Button>
                 )}
               </li>
