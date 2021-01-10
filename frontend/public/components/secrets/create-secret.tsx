@@ -394,7 +394,6 @@ class ImageSecretFormWithTrans extends React.Component<
             onChange={this.onDataChanged}
             stringData={data}
             onDisable={this.onFormDisable}
-            t={this.props.t}
           />
         )}
       </>
@@ -416,11 +415,13 @@ type ConfigEntryFormProps = {
   id: number;
   entry: Object;
   onChange: Function;
-  t: TFunction;
 };
 
-class ConfigEntryForm extends React.Component<ConfigEntryFormProps, ConfigEntryFormState> {
-  constructor(props: ConfigEntryFormProps) {
+class ConfigEntryFormWithTrans extends React.Component<
+  ConfigEntryFormProps & WithTranslation,
+  ConfigEntryFormState
+> {
+  constructor(props: ConfigEntryFormProps & WithTranslation) {
     super(props);
     this.state = {
       address: _.get(this.props.entry, 'address'),
@@ -538,6 +539,7 @@ class ConfigEntryForm extends React.Component<ConfigEntryFormProps, ConfigEntryF
     );
   }
 }
+const ConfigEntryForm = withTranslation()(ConfigEntryFormWithTrans);
 
 type CreateConfigSubformState = {
   isDockerconfigjson: boolean;
@@ -671,12 +673,7 @@ class CreateConfigSubformWithTrans extends React.Component<
               </Button>
             </div>
           )}
-          <ConfigEntryForm
-            id={index}
-            entry={entryData.entry}
-            onChange={this.onDataChanged}
-            t={this.props.t}
-          />
+          <ConfigEntryForm id={index} entry={entryData.entry} onChange={this.onDataChanged} />
         </div>
       );
     });
@@ -698,7 +695,7 @@ class CreateConfigSubformWithTrans extends React.Component<
 }
 export const CreateConfigSubform = withTranslation()(CreateConfigSubformWithTrans);
 
-class UploadConfigSubform extends React.Component<
+class UploadConfigSubformWithTrans extends React.Component<
   UploadConfigSubformProps,
   UploadConfigSubformState
 > {
@@ -753,6 +750,7 @@ class UploadConfigSubform extends React.Component<
     );
   }
 }
+const UploadConfigSubform = withTranslation()(UploadConfigSubformWithTrans);
 
 class WebHookSecretFormWithTrans extends React.Component<
   WebHookSecretFormProps,
