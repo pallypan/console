@@ -8,6 +8,8 @@ import {
 } from '@console/internal/components/modals/configure-update-strategy-modal';
 import { RadioInput } from '@console/internal/components/radio';
 
+jest.mock('i18next');
+
 describe(ConfigureUpdateStrategy.displayName, () => {
   let wrapper: ShallowWrapper<ConfigureUpdateStrategyProps>;
   let onChangeStrategyType: Spy;
