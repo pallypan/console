@@ -52,9 +52,18 @@ const PipelineBuilderForm: React.FC<PipelineBuilderFormProps> = (props) => {
     setFieldValue,
     setStatus,
     values,
+    validateForm,
   } = props;
   const statusRef = React.useRef(status);
   statusRef.current = status;
+
+  React.useEffect(() => {
+    if (values.editorType === EditorType.Form) {
+      // Force validation against the new data that was adjusted in the YAML
+      // Formik isn't properly handling the immediate state of the form values during the cycle of the editorType
+      setTimeout(() => validateForm(), 0);
+    }
+  }, [values.editorType, validateForm]);
 
   const updateErrors: UpdateErrors = React.useCallback(
     (taskErrors) => {
@@ -126,9 +135,13 @@ const PipelineBuilderForm: React.FC<PipelineBuilderFormProps> = (props) => {
   };
 
   const sanitizeToYaml = () =>
-    safeJSToYAML(convertBuilderFormToPipeline(values.formData, namespace), 'yamlData', {
-      skipInvalid: true,
-    });
+    safeJSToYAML(
+      convertBuilderFormToPipeline(values.formData, namespace, existingPipeline),
+      'yamlData',
+      {
+        skipInvalid: true,
+      },
+    );
 
   return (
     <>

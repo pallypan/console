@@ -71,14 +71,14 @@ const plugin: Plugin<ConsumedExtensions> = [
     type: 'Catalog/ItemType',
     properties: {
       type: 'OperatorBackedService',
-      // t('operator-lifecycle-manager~Operator Backed')
-      title: '%operator-lifecycle-manager~Operator Backed%',
-      // t('operator-lifecycle-manager~Browse for a variety of managed services that are installed by cluster administrators. Cluster administrators can customize the content made available in the catalog.')
+      // t('olm~Operator Backed')
+      title: '%olm~Operator Backed%',
+      // t('olm~Browse for a variety of managed services that are installed by cluster administrators. Cluster administrators can customize the content made available in the catalog.')
       catalogDescription:
-        '%operator-lifecycle-manager~Browse for a variety of managed services that are installed by cluster administrators. Cluster administrators can customize the content made available in the catalog.%',
-      // t('operator-lifecycle-manager~**Operator backed** includes a variety of services managed by Kubernetes controllers.')
+        '%olm~Browse for a variety of managed services that are installed by cluster administrators. Cluster administrators can customize the content made available in the catalog.%',
+      // t('olm~**Operator backed** includes a variety of services managed by Kubernetes controllers.')
       typeDescription:
-        '%operator-lifecycle-manager~**Operator backed** includes a variety of services managed by Kubernetes controllers.%',
+        '%olm~**Operator backed** includes a variety of services managed by Kubernetes controllers.%',
       groupings: [
         {
           label: 'Operators',
@@ -106,7 +106,8 @@ const plugin: Plugin<ConsumedExtensions> = [
       id: 'operatorhub',
       section: 'operators',
       componentProps: {
-        name: 'OperatorHub',
+        // t('olm~OperatorHub')
+        name: '%olm~OperatorHub%',
         href: '/operatorhub',
       },
     },
@@ -120,7 +121,8 @@ const plugin: Plugin<ConsumedExtensions> = [
       id: 'operators',
       section: 'operators',
       componentProps: {
-        name: 'Installed Operators',
+        // t('olm~Installed Operators')
+        name: '%olm~Installed Operators%',
         resource: referenceForModel(models.ClusterServiceVersionModel),
         startsWith: [
           models.ClusterServiceVersionModel.apiGroup,

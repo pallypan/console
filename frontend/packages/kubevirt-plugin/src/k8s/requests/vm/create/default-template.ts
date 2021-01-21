@@ -44,6 +44,7 @@ export const resolveDefaultVMTemplate = (params: DefaultVMLikeEntityParams): Tem
       }),
     )
     .removeStorage('rootdisk')
+    .removeStorage(VM_TEMPLATE_NAME_PARAMETER)
     .prependStorage({
       disk: new DiskWrapper()
         .init({
@@ -99,7 +100,7 @@ export const resolveDefaultVMTemplate = (params: DefaultVMLikeEntityParams): Tem
     [VMSettingsField.FLAVOR]: getFlavor(commonTemplate),
     [VMSettingsField.WORKLOAD_PROFILE]: getWorkloadProfile(commonTemplate),
     [VMSettingsField.TEMPLATE_PROVIDER]: null,
-    [VMSettingsField.TEMPLATE_SUPPORTED]: false,
+    [VMSettingsField.TEMPLATE_SUPPORTED]: null,
     osID,
     osName,
   };

@@ -1,11 +1,13 @@
 export enum OverviewQuery {
   MEMORY_TOTAL = 'MEMORY_TOTAL',
   MEMORY_UTILIZATION = 'MEMORY_UTILIZATION',
+  MEMORY_REQUESTS = 'MEMORY_REQUESTS',
   NETWORK_UTILIZATION = 'NETWORK_UTILIZATION',
   NETWORK_IN_UTILIZATION = 'NETWORK_IN_UTILIZATION',
   NETWORK_OUT_UTILIZATION = 'NETWORK_OUT_UTILIZATION',
   CPU_UTILIZATION = 'CPU_UTILIZATION',
   CPU_TOTAL = 'CPU_TOTAL',
+  CPU_REQUESTS = 'CPU_REQUESTS',
   STORAGE_UTILIZATION = 'STORAGE_UTILIZATION',
   STORAGE_TOTAL = 'STORAGE_TOTAL',
   PODS_BY_CPU = 'PODS_BY_CPU',
@@ -44,7 +46,7 @@ const top25Queries = {
   [OverviewQuery.NODES_BY_MEMORY]:
     'topk(25, sort_desc(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes))',
   [OverviewQuery.NODES_BY_STORAGE]:
-    'topk(25, sort_desc(sum(node_filesystem_size_bytes{mountpoint="/var"} - node_filesystem_avail_bytes{instance=~".*",mountpoint="/var"}) BY (instance)))',
+    'topk(25, sort_desc(sum(node_filesystem_size_bytes{mountpoint="/"} - node_filesystem_avail_bytes{instance=~".*",mountpoint="/"}) BY (instance)))',
   [OverviewQuery.NODES_BY_PODS]:
     'topk(25, sort_desc(sum(avg_over_time(kubelet_running_pods[5m])) BY (node)))',
   [OverviewQuery.NODES_BY_NETWORK_IN]:
@@ -58,7 +60,7 @@ const top25Queries = {
   [OverviewQuery.PROJECTS_BY_STORAGE]:
     'topk(25, sort_desc(sum(avg_over_time(pod:container_fs_usage_bytes:sum{container="", pod!=""}[5m])) BY (namespace)))',
   [OverviewQuery.PROJECTS_BY_PODS]:
-    'topk(25, sort_desc(sum(avg_over_time(kube_pod_info[5m])) BY (namespace)))',
+    'topk(25, sort_desc(count(count_over_time(kube_running_pod_ready[5m])) BY (namespace)))',
   [OverviewQuery.PROJECTS_BY_NETWORK_IN]:
     'topk(25, sort_desc(sum(rate(container_network_receive_bytes_total{ container="POD", pod!= ""}[5m])) BY (namespace)))',
   [OverviewQuery.PROJECTS_BY_NETWORK_OUT]:
@@ -69,14 +71,16 @@ const overviewQueries = {
   [OverviewQuery.MEMORY_TOTAL]: 'sum(node_memory_MemTotal_bytes)',
   [OverviewQuery.MEMORY_UTILIZATION]:
     'sum(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)',
+  [OverviewQuery.MEMORY_REQUESTS]: 'sum(kube_pod_resource_request{resource="memory"})',
   [OverviewQuery.NETWORK_UTILIZATION]:
     'sum(instance:node_network_transmit_bytes_excluding_lo:rate1m+instance:node_network_receive_bytes_excluding_lo:rate1m)',
   [OverviewQuery.CPU_UTILIZATION]: 'cluster:cpu_usage_cores:sum',
   [OverviewQuery.CPU_TOTAL]: 'sum(cluster:capacity_cpu_cores:sum)',
+  [OverviewQuery.CPU_REQUESTS]: 'sum(kube_pod_resource_request{resource="cpu"})',
   [OverviewQuery.STORAGE_UTILIZATION]:
-    '(sum(node_filesystem_size_bytes{mountpoint="/var"}) - sum(node_filesystem_free_bytes{mountpoint="/var"}))',
-  [OverviewQuery.STORAGE_TOTAL]: 'sum(node_filesystem_size_bytes{mountpoint="/var"})',
-  [OverviewQuery.POD_UTILIZATION]: 'count(kube_pod_info)',
+    '(sum(node_filesystem_size_bytes{mountpoint="/"}) - sum(node_filesystem_free_bytes{mountpoint="/"}))',
+  [OverviewQuery.STORAGE_TOTAL]: 'sum(node_filesystem_size_bytes{mountpoint="/"})',
+  [OverviewQuery.POD_UTILIZATION]: 'count(kube_running_pod_ready)',
   [OverviewQuery.NETWORK_IN_UTILIZATION]:
     'sum(instance:node_network_receive_bytes_excluding_lo:rate1m)',
   [OverviewQuery.NETWORK_OUT_UTILIZATION]:
@@ -87,10 +91,12 @@ export const utilizationQueries = {
   [OverviewQuery.CPU_UTILIZATION]: {
     utilization: overviewQueries[OverviewQuery.CPU_UTILIZATION],
     total: overviewQueries[OverviewQuery.CPU_TOTAL],
+    requests: overviewQueries[OverviewQuery.CPU_REQUESTS],
   },
   [OverviewQuery.MEMORY_UTILIZATION]: {
     utilization: overviewQueries[OverviewQuery.MEMORY_UTILIZATION],
     total: overviewQueries[OverviewQuery.MEMORY_TOTAL],
+    requests: overviewQueries[OverviewQuery.MEMORY_REQUESTS],
   },
   [OverviewQuery.STORAGE_UTILIZATION]: {
     utilization: overviewQueries[OverviewQuery.STORAGE_UTILIZATION],

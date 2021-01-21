@@ -8,6 +8,7 @@ import {
   BOOT_SOURCE_AVAILABLE,
   NetworkType,
   ANNOTATION_SOURCE_PROVIDER,
+  TEMPLATE_PROVIDER_ANNOTATION,
 } from '../../constants';
 import { DataVolumeWrapper } from '../../k8s/wrapper/vm/data-volume-wrapper';
 import { VMTemplateWrapper } from '../../k8s/wrapper/vm/vm-template-wrapper';
@@ -83,9 +84,11 @@ export const getTemplateSourceStatus: GetTemplateSourceStatus = ({
       }
     }
 
+    const provider = getProvider(pvc);
+
     return {
       source: SOURCE_TYPE.BASE_IMAGE,
-      provider: getProvider(pvc),
+      provider: provider === BOOT_SOURCE_AVAILABLE ? getProvider(dataVolume) : provider,
       isReady: !dataVolume || dataVolume.status?.phase === 'Succeeded',
       pvc,
       dataVolume,
@@ -94,6 +97,9 @@ export const getTemplateSourceStatus: GetTemplateSourceStatus = ({
       addedOn,
     };
   }
+
+  const customTemplateProvider =
+    getAnnotation(template, TEMPLATE_PROVIDER_ANNOTATION) || BOOT_SOURCE_AVAILABLE;
 
   const vm = new VMTemplateWrapper(template).getVM();
 
@@ -110,7 +116,7 @@ export const getTemplateSourceStatus: GetTemplateSourceStatus = ({
     return wrapper.getType() === NetworkType.MULTUS
       ? {
           source: SOURCE_TYPE.PXE,
-          provider: BOOT_SOURCE_AVAILABLE,
+          provider: customTemplateProvider,
           isReady: true,
           isCDRom: false,
           pxe: wrapper.getMultusNetworkName(),
@@ -148,7 +154,7 @@ export const getTemplateSourceStatus: GetTemplateSourceStatus = ({
       return supportedDVSources.includes(dataVolumeWrapper.getType())
         ? {
             source: SOURCE_TYPE.DATA_VOLUME_TEMPLATE,
-            provider: BOOT_SOURCE_AVAILABLE,
+            provider: customTemplateProvider,
             isReady: true,
             dvTemplate: dataVolumeWrapper.asResource(),
             isCDRom: isCDRom(dataVolumeWrapper.asResource(), null),
@@ -176,7 +182,7 @@ export const getTemplateSourceStatus: GetTemplateSourceStatus = ({
     );
     return {
       source: SOURCE_TYPE.DATA_VOLUME,
-      provider: getProvider(dataVolume),
+      provider: customTemplateProvider,
       isReady: dataVolume.status?.phase === 'Succeeded',
       dataVolume,
       pvc,
@@ -200,7 +206,7 @@ export const getTemplateSourceStatus: GetTemplateSourceStatus = ({
     }
     return {
       source: SOURCE_TYPE.PVC,
-      provider: getProvider(pvc),
+      provider: customTemplateProvider,
       isReady: true,
       pvc,
       isCDRom: isCDRom(null, pvc),
@@ -211,7 +217,7 @@ export const getTemplateSourceStatus: GetTemplateSourceStatus = ({
   if (volumeWrapper.getType() === VolumeType.CONTAINER_DISK) {
     return {
       source: SOURCE_TYPE.CONTAINER,
-      provider: BOOT_SOURCE_AVAILABLE,
+      provider: customTemplateProvider,
       container: volumeWrapper.getContainerImage(),
       isReady: true,
       isCDRom: false,

@@ -80,10 +80,19 @@ export const getPodLabels = (name: string) => {
 };
 
 export const mergeData = (originalResource: K8sResourceKind, newResource: K8sResourceKind) => {
+  if (_.isEmpty(originalResource)) return newResource;
+
   const mergedData = _.merge({}, originalResource || {}, newResource);
-  mergedData.metadata.labels = newResource.metadata.labels;
+  const isDevfileResource = originalResource?.metadata?.annotations?.isFromDevfile;
+  mergedData.metadata.labels = {
+    ...newResource.metadata.labels,
+    ...(isDevfileResource ? originalResource?.metadata?.labels : {}),
+  };
   if (mergedData.metadata.annotations) {
-    mergedData.metadata.annotations = newResource.metadata.annotations;
+    mergedData.metadata.annotations = {
+      ...newResource.metadata.annotations,
+      ...(isDevfileResource ? originalResource?.metadata?.annotations : {}),
+    };
   }
   if (mergedData.spec?.template?.metadata?.labels) {
     mergedData.spec.template.metadata.labels = newResource.spec?.template?.metadata?.labels;
@@ -92,10 +101,15 @@ export const mergeData = (originalResource: K8sResourceKind, newResource: K8sRes
     mergedData.spec.template.spec.containers = newResource.spec.template.spec.containers;
   }
   if (mergedData?.spec?.hasOwnProperty('strategy')) {
-    mergedData.spec.strategy = newResource.spec?.strategy ?? originalResource?.spec?.strategy;
+    mergedData.spec.strategy = newResource.spec?.strategy ?? originalResource.spec?.strategy;
   }
   if (mergedData.spec?.triggers) {
     mergedData.spec.triggers = newResource.spec.triggers;
+  }
+  if (mergedData.spec?.template?.spec?.hasOwnProperty('volumes')) {
+    mergedData.spec.template.spec.volumes = originalResource.spec?.template?.spec?.volumes;
+    mergedData.spec.template.spec.containers[0].volumeMounts =
+      originalResource.spec?.template?.spec?.containers?.[0]?.volumeMounts;
   }
   return mergedData;
 };

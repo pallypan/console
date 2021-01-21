@@ -58,6 +58,7 @@ export class GitlabService extends BaseService {
     const { name, owner, protocol, resource, full_name: fullName } = GitUrlParse(
       this.gitsource.url,
     );
+    const contextDir = this.gitsource.contextDir?.replace(/\/$/, '') || '';
     const host = `${protocol}://${resource}`;
     return {
       repoName: name,
@@ -65,6 +66,7 @@ export class GitlabService extends BaseService {
       host,
       defaultBranch: this.gitsource.ref || 'master',
       fullName,
+      contextDir,
     };
   }
 
@@ -109,7 +111,9 @@ export class GitlabService extends BaseService {
   getRepoFileList = async (): Promise<RepoFileList> => {
     try {
       const projectID = await this.getProjectId();
-      const resp = await this.client.Repositories.tree(projectID);
+      const resp = await this.client.Repositories.tree(projectID, {
+        path: this.metadata.contextDir,
+      });
       const files = resp.reduce((acc, file) => {
         if (file.type === 'blob') acc.push(file.path);
         return acc;
@@ -130,26 +134,22 @@ export class GitlabService extends BaseService {
     }
   };
 
-  isDockerfilePresent = async (): Promise<boolean> => {
+  isFilePresent = async (path: string): Promise<boolean> => {
     try {
       const projectID = await this.getProjectId();
-      await this.client.RepositoryFiles.showRaw(
-        projectID,
-        'Dockerfile',
-        this.metadata.defaultBranch,
-      );
+      await this.client.RepositoryFiles.showRaw(projectID, path, this.metadata.defaultBranch);
       return true;
     } catch (e) {
       return false;
     }
   };
 
-  getDockerfileContent = async (): Promise<string | null> => {
+  getFileContent = async (path: string): Promise<string | null> => {
     try {
       const projectID = await this.getProjectId();
       return await this.client.RepositoryFiles.showRaw(
         projectID,
-        'Dockerfile',
+        path,
         this.metadata.defaultBranch,
       );
     } catch (e) {
@@ -157,43 +157,17 @@ export class GitlabService extends BaseService {
     }
   };
 
-  isDevfilePresent = async (): Promise<boolean> => {
-    try {
-      const projectID = await this.getProjectId();
-      await this.client.RepositoryFiles.showRaw(
-        projectID,
-        'devfile.yaml',
-        this.metadata.defaultBranch,
-      );
-      return true;
-    } catch (e) {
-      return false;
-    }
+  filePath = (file: string): string => {
+    return this.metadata.contextDir ? `${this.metadata.contextDir}/${file}` : file;
   };
 
-  getDevfileContent = async (): Promise<string | null> => {
-    try {
-      const projectID = await this.getProjectId();
-      return await this.client.RepositoryFiles.showRaw(
-        projectID,
-        'devfile.yaml',
-        this.metadata.defaultBranch,
-      );
-    } catch (e) {
-      return null;
-    }
-  };
+  isDockerfilePresent = () => this.isFilePresent(this.filePath('Dockerfile'));
 
-  getPackageJsonContent = async (): Promise<string | null> => {
-    try {
-      const projectID = await this.getProjectId();
-      return await this.client.RepositoryFiles.showRaw(
-        projectID,
-        'package.json',
-        this.metadata.defaultBranch,
-      );
-    } catch (e) {
-      return null;
-    }
-  };
+  getDockerfileContent = () => this.getFileContent(this.filePath('Dockerfile'));
+
+  isDevfilePresent = () => this.isFilePresent(this.filePath('devfile.yaml'));
+
+  getDevfileContent = () => this.getFileContent(this.filePath('devfile.yaml'));
+
+  getPackageJsonContent = () => this.getFileContent(this.filePath('package.json'));
 }

@@ -29,7 +29,17 @@ export const filterTemplates = (
   const commonTemplateItems = commonTemplates.reduce((acc, t) => {
     const name = getTemplateName(t);
     if (acc[name]) {
-      acc[name].variants.push(t);
+      const isRecommended = t.metadata.labels?.[DEFAULT_OS_VARIANT] === 'true';
+      if (isRecommended) {
+        acc[name].metadata = {
+          name: t.metadata.name,
+          uid: t.metadata.uid,
+          namespace: t.metadata.namespace,
+        };
+        acc[name].variants.unshift(t);
+      } else {
+        acc[name].variants.push(t);
+      }
     } else {
       acc[name] = {
         metadata: {
@@ -45,11 +55,7 @@ export const filterTemplates = (
   }, {} as { [key: string]: TemplateItem });
 
   Object.keys(commonTemplateItems).forEach((key) => {
-    const recommendedTemplate =
-      commonTemplateItems[key].variants.find(
-        (t) => t.metadata.labels?.[DEFAULT_OS_VARIANT] === 'true',
-      ) || commonTemplateItems[key].variants[0];
-    const recommendedProfile = getWorkloadProfile(recommendedTemplate);
+    const recommendedProfile = getWorkloadProfile(commonTemplateItems[key].variants[0]);
     commonTemplateItems[key].variants = commonTemplateItems[key].variants.filter(
       (t) => getWorkloadProfile(t) === recommendedProfile,
     );

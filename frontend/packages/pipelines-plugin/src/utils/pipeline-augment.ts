@@ -1,3 +1,4 @@
+import { TFunction } from 'i18next';
 import {
   chart_color_green_400 as successColor,
   chart_color_blue_300 as runningColor,
@@ -48,6 +49,7 @@ export interface TaskStatus {
   Succeeded: number;
   Cancelled: number;
   Failed: number;
+  Skipped: number;
 }
 
 export interface PipelineTaskRef {
@@ -77,6 +79,11 @@ export interface PipelineTaskResource {
   resource?: string;
   from?: string[];
 }
+export interface WhenExpression {
+  Input: string;
+  Operator: string;
+  Values: string[];
+}
 export interface PipelineTask {
   name: string;
   runAfter?: string[];
@@ -85,6 +92,7 @@ export interface PipelineTask {
   params?: PipelineTaskParam[];
   resources?: PipelineTaskResources;
   workspaces?: PipelineTaskWorkspace[];
+  when?: WhenExpression[];
 }
 export interface PipelineTaskWorkspace {
   name: string;
@@ -218,6 +226,9 @@ export interface PipelineRun extends K8sResourceKind {
     completionTime?: string;
     taskRuns?: PLRTaskRuns;
     pipelineSpec: PipelineSpec;
+    skippedTasks?: {
+      name: string;
+    }[];
   };
 }
 
@@ -429,31 +440,31 @@ export enum runStatus {
   Idle = 'Idle',
 }
 
-export const getRunStatusColor = (status: string): StatusMessage => {
+export const getRunStatusColor = (status: string, t: TFunction): StatusMessage => {
   switch (status) {
     case runStatus.Succeeded:
-      return { message: 'Succeeded', pftoken: successColor };
+      return { message: t('pipelines-plugin~Succeeded'), pftoken: successColor };
     case runStatus.Failed:
-      return { message: 'Failed', pftoken: failureColor };
+      return { message: t('pipelines-plugin~Failed'), pftoken: failureColor };
     case runStatus.FailedToStart:
       return {
-        message: 'PipelineRun failed to start',
+        message: t('pipelines-plugin~PipelineRun failed to start'),
         pftoken: failureColor,
       };
     case runStatus.Running:
-      return { message: 'Running', pftoken: runningColor };
+      return { message: t('pipelines-plugin~Running'), pftoken: runningColor };
     case runStatus['In Progress']:
-      return { message: 'Running', pftoken: runningColor };
+      return { message: t('pipelines-plugin~Running'), pftoken: runningColor };
 
     case runStatus.Skipped:
-      return { message: 'Skipped', pftoken: skippedColor };
+      return { message: t('pipelines-plugin~Skipped'), pftoken: skippedColor };
     case runStatus.Cancelled:
-      return { message: 'Cancelled', pftoken: cancelledColor };
+      return { message: t('pipelines-plugin~Cancelled'), pftoken: cancelledColor };
     case runStatus.Idle:
     case runStatus.Pending:
-      return { message: 'Pending', pftoken: pendingColor };
+      return { message: t('pipelines-plugin~Pending'), pftoken: pendingColor };
     default:
-      return { message: 'PipelineRun not started yet', pftoken: pendingColor };
+      return { message: t('pipelines-plugin~PipelineRun not started yet'), pftoken: pendingColor };
   }
 };
 
@@ -484,6 +495,7 @@ export const getTaskStatus = (pipelinerun: PipelineRun): TaskStatus => {
       ? Object.keys(pipelinerun.status.taskRuns)
       : [];
   const plrTaskLength = plrTasks.length;
+  const skippedTaskLength = (pipelinerun?.status?.skippedTasks || []).length;
   const taskStatus: TaskStatus = {
     PipelineNotStarted: 0,
     Pending: 0,
@@ -491,6 +503,7 @@ export const getTaskStatus = (pipelinerun: PipelineRun): TaskStatus => {
     Succeeded: 0,
     Failed: 0,
     Cancelled: 0,
+    Skipped: skippedTaskLength,
   };
   if (pipelinerun && pipelinerun.status && pipelinerun.status.taskRuns) {
     plrTasks.forEach((taskRun) => {
@@ -510,7 +523,8 @@ export const getTaskStatus = (pipelinerun: PipelineRun): TaskStatus => {
 
     const pipelineRunHasFailure = taskStatus[runStatus.Failed] > 0;
     const pipelineRunIsCancelled = pipelineRunFilterReducer(pipelinerun) === runStatus.Cancelled;
-    const unhandledTasks = totalTasks >= plrTaskLength ? totalTasks - plrTaskLength : totalTasks;
+    const unhandledTasks =
+      totalTasks >= plrTaskLength ? totalTasks - plrTaskLength - skippedTaskLength : totalTasks;
 
     if (pipelineRunHasFailure || pipelineRunIsCancelled) {
       taskStatus[runStatus.Cancelled] += unhandledTasks;

@@ -108,6 +108,20 @@ describe('Github Service', () => {
     });
   });
 
+  it('should use persisted git service metadata and detect java build type', () => {
+    const gitSource: GitSource = { url: 'https://github.com/rohitkrai03/spring-petclinic' };
+
+    const gitService = new GithubService(gitSource);
+
+    return nockBack('files-java.json').then(async ({ nockDone, context }) => {
+      const buildTypes: BuildType[] = await gitService.detectBuildTypes();
+      expect(buildTypes.length).toBeGreaterThanOrEqual(1);
+      expect(buildTypes[0].buildType).toBe('java');
+      context.assertScopesFinished();
+      nockDone();
+    });
+  });
+
   it('should detect Golang language', () => {
     const gitSource: GitSource = { url: 'https://github.com/redhat-developer/devconsole-git' };
 
@@ -117,6 +131,23 @@ describe('Github Service', () => {
       const languageList: RepoLanguageList = await gitService.getRepoLanguageList();
       expect(languageList.languages.length).toBeGreaterThanOrEqual(1);
       expect(languageList.languages).toContain('Go');
+      context.assertScopesFinished();
+      nockDone();
+    });
+  });
+
+  it('should detect DotNet build type inside context directory', () => {
+    const gitSource: GitSource = {
+      url: 'https://github.com/redhat-developer/s2i-dotnetcore-ex',
+      contextDir: 'app',
+    };
+
+    const gitService = new GithubService(gitSource);
+
+    return nockBack('files-dotnet.json').then(async ({ nockDone, context }) => {
+      const buildTypes: BuildType[] = await gitService.detectBuildTypes();
+      expect(buildTypes.length).toBeGreaterThanOrEqual(1);
+      expect(buildTypes[0].buildType).toBe('dotnet');
       context.assertScopesFinished();
       nockDone();
     });

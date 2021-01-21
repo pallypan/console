@@ -41,10 +41,19 @@ const evaluateTemplate = (s: string, variables: VariablesMap, timespan: number):
   // Use a minimum of 5m to make sure we have enough data to perform `irate` calculations, which
   // require 2 data points each. Otherwise, there could be gaps in the graph.
   const interval: Variable = { value: `${Math.max(intervalMinutes, 5)}m` };
+  const allVariables = {
+    ...variables,
+    __interval: interval,
+    // eslint-disable-next-line camelcase
+    __rate_interval: interval,
+
+    // This is last to ensure it is applied after all other variable substitutions (because the
+    // other variable substitutions may result in "$__auto_interval_*" being inserted)
+    '__auto_interval_[a-z]+': interval,
+  };
 
   let result = s;
-  // eslint-disable-next-line camelcase
-  _.each({ ...variables, __interval: interval, __rate_interval: interval }, (v, k) => {
+  _.each(allVariables, (v, k) => {
     const re = new RegExp(`\\$${k}`, 'g');
     if (result.match(re)) {
       if (v.isLoading) {
@@ -54,6 +63,7 @@ const evaluateTemplate = (s: string, variables: VariablesMap, timespan: number):
       result = result.replace(re, v.value || '');
     }
   });
+
   return result;
 };
 
@@ -66,6 +76,7 @@ const useBoolean = (initialValue: boolean): [boolean, () => void, () => void, ()
 };
 
 const VariableDropdown: React.FC<VariableDropdownProps> = ({
+  id,
   isError = false,
   items,
   label,
@@ -78,12 +89,18 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({
 
   return (
     <div className="form-group monitoring-dashboards__dropdown-wrap">
-      <label className="monitoring-dashboards__dropdown-title">{label}</label>
+      <label htmlFor={`${id}-dropdown`} className="monitoring-dashboards__dropdown-title">
+        {label}
+      </label>
       {isError ? (
         <Dropdown
           toggle={
-            <DropdownToggle className="monitoring-dashboards__dropdown-button" isDisabled={true}>
-              <RedExclamationCircleIcon /> {t('monitoring~Error loading options')}
+            <DropdownToggle
+              className="monitoring-dashboards__dropdown-button"
+              id={`${id}-dropdown`}
+              isDisabled={true}
+            >
+              <RedExclamationCircleIcon /> {t('public~Error loading options')}
             </DropdownToggle>
           }
         />
@@ -99,6 +116,7 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({
           toggle={
             <DropdownToggle
               className="monitoring-dashboards__dropdown-button"
+              id={`${id}-dropdown`}
               onToggle={toggleIsOpen}
             >
               {items[selectedKey]}
@@ -112,6 +130,7 @@ const VariableDropdown: React.FC<VariableDropdownProps> = ({
 };
 
 const SingleVariableDropdown_: React.FC<SingleVariableDropdownProps> = ({
+  id,
   isHidden,
   name,
   options,
@@ -168,6 +187,7 @@ const SingleVariableDropdown_: React.FC<SingleVariableDropdownProps> = ({
 
   return (
     <VariableDropdown
+      id={id}
       isError={isError}
       items={_.zipObject(options, options)}
       label={name}
@@ -198,7 +218,7 @@ const SingleVariableDropdown = connect(
 const AllVariableDropdowns_: React.FC<AllVariableDropdownsProps> = ({ variables }) => (
   <>
     {variables.keySeq().map((name) => (
-      <SingleVariableDropdown key={name} name={name} />
+      <SingleVariableDropdown key={name} id={name} name={name} />
     ))}
   </>
 );
@@ -214,23 +234,24 @@ const TimespanDropdown_: React.FC<TimespanDropdownProps> = ({ timespan, setTimes
   ]);
 
   const timespanOptions = {
-    '5m': t('monitoring~{{count}} minute', { count: 5 }),
-    '15m': t('monitoring~{{count}} minute', { count: 15 }),
-    '30m': t('monitoring~{{count}} minute', { count: 30 }),
-    '1h': t('monitoring~{{count}} hour', { count: 1 }),
-    '2h': t('monitoring~{{count}} hour', { count: 2 }),
-    '6h': t('monitoring~{{count}} hour', { count: 6 }),
-    '12h': t('monitoring~{{count}} hour', { count: 12 }),
-    '1d': t('monitoring~{{count}} day', { count: 1 }),
-    '2d': t('monitoring~{{count}} day', { count: 2 }),
-    '1w': t('monitoring~{{count}} week', { count: 1 }),
-    '2w': t('monitoring~{{count}} week', { count: 2 }),
+    '5m': t('public~{{count}} minute', { count: 5 }),
+    '15m': t('public~{{count}} minute', { count: 15 }),
+    '30m': t('public~{{count}} minute', { count: 30 }),
+    '1h': t('public~{{count}} hour', { count: 1 }),
+    '2h': t('public~{{count}} hour', { count: 2 }),
+    '6h': t('public~{{count}} hour', { count: 6 }),
+    '12h': t('public~{{count}} hour', { count: 12 }),
+    '1d': t('public~{{count}} day', { count: 1 }),
+    '2d': t('public~{{count}} day', { count: 2 }),
+    '1w': t('public~{{count}} week', { count: 1 }),
+    '2w': t('public~{{count}} week', { count: 2 }),
   };
 
   return (
     <VariableDropdown
+      id="monitoring-time-range-dropdown"
       items={timespanOptions}
-      label={t('monitoring~Time range')}
+      label={t('public~Time range')}
       onChange={onChange}
       selectedKey={formatPrometheusDuration(timespan)}
     />
@@ -251,10 +272,14 @@ const PollIntervalDropdown_ = ({ interval, setInterval }) => {
 
   return (
     <div className="form-group monitoring-dashboards__dropdown-wrap">
-      <label className="monitoring-dashboards__dropdown-title">
-        {t('monitoring~Refresh interval')}
+      <label htmlFor="refresh-interval-dropdown" className="monitoring-dashboards__dropdown-title">
+        {t('public~Refresh interval')}
       </label>
-      <IntervalDropdown interval={interval} setInterval={setInterval} />
+      <IntervalDropdown
+        interval={interval}
+        setInterval={setInterval}
+        id="refresh-interval-dropdown"
+      />
     </div>
   );
 };
@@ -444,7 +469,7 @@ const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
             };
           } catch (e) {
             setError(
-              t('monitoring~Could not parse JSON data for dashboard "{{dashboard}}"', {
+              t('public~Could not parse JSON data for dashboard "{{dashboard}}"', {
                 dashboard: item.metadata.name,
               }),
             );
@@ -511,13 +536,13 @@ const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
   return (
     <>
       <Helmet>
-        <title>{t('monitoring~Metrics dashboards')}</title>
+        <title>{t('public~Metrics dashboards')}</title>
       </Helmet>
       <div className="co-m-nav-title co-m-nav-title--detail">
         <div className="monitoring-dashboards__header">
           <h1 className="co-m-pane__heading">
             <span>
-              {t('monitoring~Dashboards')} <GrafanaLink />
+              {t('public~Dashboards')} <GrafanaLink />
             </span>
           </h1>
           <div className="monitoring-dashboards__options">
@@ -528,8 +553,9 @@ const MonitoringDashboardsPage_: React.FC<MonitoringDashboardsPageProps> = ({
         <div className="monitoring-dashboards__variables">
           {!_.isEmpty(boardItems) && (
             <VariableDropdown
+              id="monitoring-board-dropdown"
               items={boardItems}
-              label={t('monitoring~Dashboard')}
+              label={t('public~Dashboard')}
               onChange={changeBoard}
               selectedKey={board}
             />
@@ -581,6 +607,7 @@ type Variable = {
 type VariablesMap = { [key: string]: Variable };
 
 type VariableDropdownProps = {
+  id: string;
   isError?: boolean;
   items: { [key: string]: string };
   label: string;
@@ -589,6 +616,7 @@ type VariableDropdownProps = {
 };
 
 type SingleVariableDropdownProps = {
+  id: string;
   isHidden: boolean;
   name: string;
   options?: string[];

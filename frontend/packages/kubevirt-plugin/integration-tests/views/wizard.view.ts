@@ -7,7 +7,7 @@ import { ProvisionSource } from '../tests/utils/constants/enums/provisionSource'
 // Wizard Common
 export const createItemButton = $('[data-test-id="item-create"]');
 export const createWithWizardButton = $('[data-test-id="vm-wizard"]');
-export const createWithYAMLButton = $('[data-test-id="vm-yaml]');
+export const createWithYAMLButton = $('[data-test-id="vm-yaml"]');
 export const backButton = element(by.buttonText('Back'));
 export const cancelButton = element(by.buttonText('Cancel'));
 export const nextButton = element(by.buttonText('Next'));
@@ -31,7 +31,7 @@ export const vmNameHelper = $('#vm-name-helper');
 // Basic Settings tab
 export const templateSelect = $('#template-dropdown');
 export const provisionSourceSelect = $('#image-source-type-dropdown');
-export const goldenImageCloneCheckbox = $('#clone-common-base-image-checkbox');
+export const goldenImageCloneCheckbox = $$('#clone-common-base-image-checkbox').get(0);
 export const provisionSourceInputs = {
   [ProvisionSource.URL.getValue()]: $('#provision-source-url'),
   [ProvisionSource.CONTAINER.getValue()]: $('#provision-source-container'),
@@ -46,6 +46,7 @@ export const customFlavorMemoryHintBlock = $('#resources-memory-helper');
 
 export const nameInput = $('#vm-name');
 export const descriptionInput = $('#vm-description');
+export const providerInput = $('#template-provider');
 export const startVMOnCreation = $('#start-vm');
 
 // Networking tab
@@ -55,6 +56,7 @@ export const pxeBootSourceSelect = $('#pxe-bootsource');
 // Storage tab
 export const addDiskButton = $('#add-disk');
 export const storageBootSourceSelect = $('#storage-bootsource');
+export const storageBootsourceHelper = $('#storage-bootsource-helper');
 export const diskWarning = (resourceName) =>
   $(`[data-id="${resourceName}"]`).$('.kv-validation-cell__cell--warning');
 
@@ -99,3 +101,17 @@ export const tableRowAttribute = async (name: string, columnIndex: number): Prom
 };
 
 export const uploadLink = element(by.linkText('upload a new disk image'));
+
+// pvc dropdown button on customize wizard
+export const selectPVCNS = $('#clone-pvc-ns');
+export const selectPVCName = element(by.partialButtonText('Select Persistent Volume Claim'));
+
+// wizard boot source
+export const pvcNSButton = $('#pvc-ns-dropdown');
+export const pvcNameButton = $('#pvc-name-dropdown');
+export const pvcNS = (name: string) => $(`#${name}-Project-link`);
+export const pvcName = (name: string) => $(`#${name}-PersistentVolumeClaim-link`);
+export const diskAdvance = element(by.buttonText('Advanced'));
+export const selectSCButton = $('#form-ds-sc-select');
+export const selectAccessModeButton = $('#form-ds-access-mode-select');
+export const selectVolumeModeButton = $('#form-ds-volume-mode-select');

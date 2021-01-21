@@ -8,13 +8,18 @@ import { NumberSpinner, withHandlePromise, HandlePromiseProps } from '../utils';
 
 export const ConfigureCountModal = withHandlePromise((props: ConfigureCountModalProps) => {
   const {
+    buttonText,
+    buttonTextKey,
+    buttonTextVariables,
     defaultValue,
     path,
     resource,
     resourceKind,
+    opts,
     handlePromise,
     title,
     titleKey,
+    titleVariables,
     message,
     messageKey,
     messageVariables,
@@ -28,12 +33,11 @@ export const ConfigureCountModal = withHandlePromise((props: ConfigureCountModal
     e.preventDefault();
 
     const patch = [{ op: 'replace', path, value: _.toInteger(value) }];
-
     const invalidateState = props.invalidateState || _.noop;
 
     invalidateState(true, _.toInteger(value));
     handlePromise(
-      k8sPatch(resourceKind, resource, patch),
+      k8sPatch(resourceKind, resource, patch, opts),
       () => close(),
       (error) => {
         invalidateState(false);
@@ -44,7 +48,7 @@ export const ConfigureCountModal = withHandlePromise((props: ConfigureCountModal
 
   return (
     <form onSubmit={submit} name="form" className="modal-content ">
-      <ModalTitle>{titleKey ? t(titleKey) : title}</ModalTitle>
+      <ModalTitle>{titleKey ? t(titleKey, titleVariables) : title}</ModalTitle>
       <ModalBody>
         <p>{messageKey ? t(messageKey, messageVariables) : message}</p>
         <NumberSpinner
@@ -60,7 +64,7 @@ export const ConfigureCountModal = withHandlePromise((props: ConfigureCountModal
       <ModalSubmitFooter
         errorMessage={props.errorMessage}
         inProgress={props.inProgress}
-        submitText={props.buttonTextKey ? t(props.buttonTextKey) : props.buttonText}
+        submitText={buttonTextKey ? t(buttonTextKey, buttonTextVariables) : buttonText}
         cancel={props.cancel}
       />
     </form>
@@ -83,6 +87,7 @@ export const configureReplicaCountModal = (props) => {
         path: '/spec/replicas',
         // t('modal~Save')
         buttonTextKey: 'modal~Save',
+        opts: { path: 'scale' },
       },
       props,
     ),
@@ -116,12 +121,15 @@ export type ConfigureCountModalProps = {
   messageVariables: { [key: string]: any };
   buttonText?: string;
   buttonTextKey?: string;
+  buttonTextVariables?: { [key: string]: any };
   defaultValue: number;
   path: string;
   resource: K8sResourceKind;
   resourceKind: K8sKind;
+  opts?: { [key: string]: any };
   title?: string;
   titleKey?: string;
+  titleVariables?: { [key: string]: any };
   invalidateState?: (isInvalid: boolean, count?: number) => void;
   inProgress: boolean;
   errorMessage: string;

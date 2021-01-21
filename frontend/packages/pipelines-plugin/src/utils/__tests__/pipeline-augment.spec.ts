@@ -1,4 +1,5 @@
 import * as _ from 'lodash';
+import { TFunction } from 'i18next';
 import { referenceForModel, apiVersionForModel } from '@console/internal/module/k8s';
 import { pipelineTestData, DataState, PipelineExampleNames } from '../../test-data/pipeline-data';
 import {
@@ -15,6 +16,8 @@ import {
 } from '../pipeline-augment';
 import { ClusterTaskModel, PipelineRunModel, TaskModel, PipelineModel } from '../../models';
 import { testData } from './pipeline-augment-test-data';
+
+const t = (key): TFunction => key;
 
 describe('PipelineAugment test getResources create correct resources for firehose', () => {
   it('expect resources to be null for no data', () => {
@@ -81,14 +84,14 @@ describe('PipelineAugment test getRunStatusColor handles all runStatus values', 
   it('expect all but PipelineNotStarted to produce a non-default result', () => {
     // Verify that we cover colour states for all the runStatus values
     const failCase = 'PipelineNotStarted';
-    const defaultCase = getRunStatusColor(runStatus[failCase]);
+    const defaultCase = getRunStatusColor(runStatus[failCase], t);
     const allOtherStatuses = Object.keys(runStatus)
       .filter((status) => status !== failCase)
       .map((status) => runStatus[status]);
 
     expect(allOtherStatuses).not.toHaveLength(0);
     allOtherStatuses.forEach((statusValue) => {
-      const { message } = getRunStatusColor(statusValue);
+      const { message } = getRunStatusColor(statusValue, t);
 
       expect(defaultCase.message).not.toEqual(message);
     });
@@ -99,7 +102,7 @@ describe('PipelineAugment test getRunStatusColor handles all runStatus values', 
 
     expect(runStates).not.toHaveLength(0);
     runStates.forEach((statusValue) => {
-      const { message } = getRunStatusColor(statusValue);
+      const { message } = getRunStatusColor(statusValue, t);
 
       expect(message).not.toHaveLength(0);
     });
@@ -117,6 +120,7 @@ describe('PipelineAugment test correct task status state is pulled from pipeline
       Succeeded: 0,
       Failed: 0,
       Cancelled: 0,
+      Skipped: 0,
     });
   });
 
@@ -251,6 +255,22 @@ describe('PipelineAugment test correct task status state is pulled from pipeline
       expect(sumFailedTaskStatus(taskStatus)).toEqual(expected.failed);
       expect(sumSuccededTaskStatus(taskStatus)).toEqual(expected.succeeded);
       expect(sumCancelledTaskStatus(taskStatus)).toEqual(expected.cancelled);
+      expect(sumTaskStatuses(taskStatus)).toEqual(taskCount);
+    });
+  });
+
+  describe('Skipped pipelines', () => {
+    // When a pipeline run skips certain task based on the when expression/condtion
+    const sumSkippedTaskStatus = (status: TaskStatus): number => status.Skipped;
+    const sumSuccededTaskStatus = (status: TaskStatus): number => status.Succeeded;
+    const complexTestData = pipelineTestData[PipelineExampleNames.CONDITIONAL_PIPELINE];
+
+    it(`expect to return the skipped task status count if whenExpression is used`, () => {
+      const expected = { succeeded: 1, skipped: 1 };
+      const taskCount = getExpectedTaskCount(complexTestData.pipeline);
+      const taskStatus = getTaskStatus(complexTestData.pipelineRuns[DataState.SKIPPED]);
+      expect(sumSkippedTaskStatus(taskStatus)).toEqual(expected.skipped);
+      expect(sumSuccededTaskStatus(taskStatus)).toEqual(expected.succeeded);
       expect(sumTaskStatuses(taskStatus)).toEqual(taskCount);
     });
   });

@@ -93,13 +93,13 @@ export const getBasicVMBuilder = () =>
     .setDescription('Default vm description')
     .setSelectTemplateName(TemplateByName.RHEL7)
     .setFlavor(flavorConfigs.Tiny)
-    .setOS(OperatingSystem.RHEL7)
     .setWorkload(Workload.DESKTOP)
-    .setStartOnCreation(false);
+    .setStartOnCreation(true);
 
 export const getBasicVMTBuilder = () =>
   new VMTemplateBuilder()
     .setNamespace(testName)
+    .setProvider('test provider')
     .setDescription('Default vmt description')
     .setFlavor(flavorConfigs.Tiny)
     .setOS(OperatingSystem.RHEL7)

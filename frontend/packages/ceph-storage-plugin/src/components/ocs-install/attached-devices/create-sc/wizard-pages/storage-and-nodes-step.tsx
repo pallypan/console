@@ -30,7 +30,6 @@ import {
   isFlexibleScaling,
   filterSCWithNoProv,
   getAssociatedNodes,
-  nodesWithoutTaints,
   isArbiterSC,
 } from '../../../../../utils/install';
 import { ValidationMessage, ValidationType } from '../../../../../utils/common-ocs-install-el';
@@ -55,7 +54,7 @@ const validate = (
 ): ValidationType[] => {
   const validations = [];
   if (!enableStretchCluster && enableFlexibleScaling) {
-    validations.push(ValidationType.BAREMETAL_FLEXIBLE_SCALING);
+    validations.push(ValidationType.ATTACHED_DEVICES_FLEXIBLE_SCALING);
   }
   if (enableMinimal) {
     validations.push(ValidationType.MINIMAL);
@@ -112,10 +111,10 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
   }, [cpu, dispatch, memory, nodesCount]);
 
   React.useEffect(() => {
-    if (isFlexibleScalingSupported && !stretchClusterChecked) {
+    if (isFlexibleScalingSupported) {
       dispatch({
         type: 'setEnableFlexibleScaling',
-        value: isFlexibleScaling(nodesCount, zonesCount),
+        value: !stretchClusterChecked && isFlexibleScaling(nodesCount, zonesCount),
       });
     }
   }, [dispatch, zonesCount, nodesCount, stretchClusterChecked, isFlexibleScalingSupported]);
@@ -148,7 +147,7 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
           state={state}
           dispatch={dispatch}
           pvData={pvData}
-          nodesData={nodesWithoutTaints(nodesData)}
+          nodesData={nodesData}
         />
       )}
       <FormGroup
@@ -204,7 +203,9 @@ export const StorageAndNodes: React.FC<StorageAndNodesProps> = ({ state, dispatc
             <SelectNodesDetails cpu={cpu} memory={memory} zones={zones.size} nodes={nodesCount} />
           )}
           {!!validations.length &&
-            validations.map((validation) => <ValidationMessage validation={validation} />)}
+            validations.map((validation) => (
+              <ValidationMessage key={validation} validation={validation} />
+            ))}
         </GridItem>
       </Grid>
     </Form>

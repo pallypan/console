@@ -157,14 +157,14 @@ const MetricsActionsMenu_: React.FC<MetricsActionsMenuProps> = ({
   };
 
   const actionsMenuActions = [
-    { label: t('monitoring~Add query'), callback: addQuery },
+    { label: t('public~Add query'), callback: addQuery },
     {
       label: isAllExpanded
-        ? t('monitoring~Collapse all query tables')
-        : t('monitoring~Expand all query tables'),
+        ? t('public~Collapse all query tables')
+        : t('public~Expand all query tables'),
       callback: () => setAllExpanded(!isAllExpanded),
     },
-    { label: t('monitoring~Delete all queries'), callback: doDelete },
+    { label: t('public~Delete all queries'), callback: doDelete },
   ];
 
   return (
@@ -222,7 +222,7 @@ const ToggleGraph_ = ({ hideGraphs, toggle }) => {
       onClick={toggle}
       variant="link"
     >
-      {icon} {hideGraphs ? t('monitoring~Show graph') : t('monitoring~Hide graph')}
+      {icon} {hideGraphs ? t('public~Show graph') : t('public~Hide graph')}
     </Button>
   );
 };
@@ -265,7 +265,7 @@ const MetricsDropdown_: React.FC<MetricsDropdownProps> = ({ insertText, setMetri
     }
   };
 
-  let title: React.ReactNode = t('monitoring~Insert metric at cursor');
+  let title: React.ReactNode = t('public~Insert metric at cursor');
   if (error !== undefined) {
     const message =
       error?.response?.status === 403 ? 'Access restricted.' : 'Failed to load metrics list.';
@@ -496,7 +496,7 @@ const QueryInput_: React.FC<QueryInputProps> = ({
   // Set the default textarea height to the number of lines in the query text
   const rows = _.clamp((text.match(/\n/g) || []).length + 1, 2, 10);
 
-  const placeholder = t('monitoring~Expression (press Shift+Enter for newlines)');
+  const placeholder = t('public~Expression (press Shift+Enter for newlines)');
 
   return (
     <div className="query-browser__query pf-c-dropdown">
@@ -515,7 +515,7 @@ const QueryInput_: React.FC<QueryInputProps> = ({
       />
       <Button
         className="query-browser__clear-icon"
-        aria-label={t('monitoring~Clear query')}
+        aria-label={t('public~Clear query')}
         onClick={onClear}
         type="button"
         variant="plain"
@@ -576,16 +576,14 @@ const QueryKebab_: React.FC<QueryKebabProps> = ({
     <Kebab
       options={[
         {
-          label: isEnabled ? t('monitoring~Disable query') : t('monitoring~Enable query'),
+          label: isEnabled ? t('public~Disable query') : t('public~Enable query'),
           callback: toggleIsEnabled,
         },
         {
-          label: isDisabledSeriesEmpty
-            ? t('monitoring~Hide all series')
-            : t('monitoring~Show all series'),
+          label: isDisabledSeriesEmpty ? t('public~Hide all series') : t('public~Show all series'),
           callback: toggleAllSeries,
         },
-        { label: t('monitoring~Delete query'), callback: doDelete },
+        { label: t('public~Delete query'), callback: doDelete },
       ]}
     />
   );
@@ -706,21 +704,18 @@ const QueryTable_: React.FC<QueryTableProps> = ({
     );
   }
 
-  const { result, resultType } = data;
-
-  // Add any data series from `series` (those displayed in the graph) that are not already in `result`. This happens
-  // for filtering PromQL queries that exclude a series currently, but did not exclude that same series at some point
-  // during that graph's range.
-  _.each(series, (labels) => {
-    if (_.every(result, (r) => !_.isEqual(labels, r.metric))) {
-      result.push({ metric: labels });
-    }
-  });
+  // Add any data series from `series` (those displayed in the graph) that are not in `data.result`.
+  // This happens for queries that exclude a series currently, but included that same series at some
+  // point during the graph's range.
+  const expiredSeries = _.differenceWith(series, data.result, (s, r) => _.isEqual(s, r.metric));
+  const result = expiredSeries.length
+    ? [...data.result, ...expiredSeries.map((metric) => ({ metric }))]
+    : data.result;
 
   if (!result || result.length === 0) {
     return (
       <div className="query-browser__table-message">
-        <YellowExclamationTriangleIcon /> {t('monitoring~No datapoints found.')}
+        <YellowExclamationTriangleIcon /> {t('public~No datapoints found.')}
       </div>
     );
   }
@@ -733,7 +728,7 @@ const QueryTable_: React.FC<QueryTableProps> = ({
   const buttonCell = (labels) => ({ title: <SeriesButton index={index} labels={labels} /> });
 
   let columns, rows;
-  if (resultType === 'scalar') {
+  if (data.resultType === 'scalar') {
     columns = ['', { title: 'Value', ...cellProps }];
     rows = [[buttonCell({}), _.get(result, '[1]')]];
   } else {
@@ -749,7 +744,7 @@ const QueryTable_: React.FC<QueryTableProps> = ({
     ];
 
     let rowMapper;
-    if (resultType === 'matrix') {
+    if (data.resultType === 'matrix') {
       rowMapper = ({ metric, values }) => [
         '',
         ..._.map(allLabelKeys, (k) => metric[k]),
@@ -831,7 +826,7 @@ const Query_: React.FC<QueryProps> = ({
   const { t } = useTranslation();
 
   const switchKey = `${id}-${isEnabled}`;
-  const switchLabel = isEnabled ? t('monitoring~Disable query') : t('monitoring~Enable query');
+  const switchLabel = isEnabled ? t('public~Disable query') : t('public~Enable query');
 
   const toggleIsExpanded = () => patchQuery({ isExpanded: !isExpanded });
 
@@ -870,7 +865,11 @@ const Query = connect(
   queryDispatchToProps,
 )(Query_);
 
-const QueryBrowserWrapper_: React.FC<QueryBrowserWrapperProps> = ({ patchQuery, queriesList }) => {
+const QueryBrowserWrapper_: React.FC<QueryBrowserWrapperProps> = ({
+  hideGraphs,
+  patchQuery,
+  queriesList,
+}) => {
   const { t } = useTranslation();
 
   const queries = queriesList.toJS();
@@ -904,6 +903,10 @@ const QueryBrowserWrapper_: React.FC<QueryBrowserWrapperProps> = ({ patchQuery, 
     setAllQueryArguments(newParams);
   }, [queryStrings]);
 
+  if (hideGraphs) {
+    return null;
+  }
+
   const insertExampleQuery = () => {
     const focusedIndex = focusedQuery?.index ?? 0;
     const index = queries[focusedIndex] ? focusedIndex : 0;
@@ -911,31 +914,39 @@ const QueryBrowserWrapper_: React.FC<QueryBrowserWrapperProps> = ({ patchQuery, 
     patchQuery(index, { isEnabled: true, query: text, text });
   };
 
-  return queryStrings.join('') === '' ? (
-    <div className="query-browser__wrapper graph-empty-state">
-      <EmptyState variant={EmptyStateVariant.full}>
-        <EmptyStateIcon icon={ChartLineIcon} />
-        <Title headingLevel="h2" size="md">
-          {t('monitoring~No query entered')}
-        </Title>
-        <EmptyStateBody>
-          {t('monitoring~Enter a query in the box below to explore metrics for this cluster.')}
-        </EmptyStateBody>
-        <Button onClick={insertExampleQuery} variant="primary">
-          {t('monitoring~Insert example query')}
-        </Button>
-      </EmptyState>
-    </div>
-  ) : (
+  if (queryStrings.join('') === '') {
+    return (
+      <div className="query-browser__wrapper graph-empty-state">
+        <EmptyState variant={EmptyStateVariant.full}>
+          <EmptyStateIcon icon={ChartLineIcon} />
+          <Title headingLevel="h2" size="md">
+            {t('public~No query entered')}
+          </Title>
+          <EmptyStateBody>
+            {t('public~Enter a query in the box below to explore metrics for this cluster.')}
+          </EmptyStateBody>
+          <Button onClick={insertExampleQuery} variant="primary">
+            {t('public~Insert example query')}
+          </Button>
+        </EmptyState>
+      </div>
+    );
+  }
+
+  return (
     <QueryBrowser
       defaultTimespan={30 * 60 * 1000}
       disabledSeries={disabledSeries}
       queries={queryStrings}
+      showStackedControl
     />
   );
 };
 const QueryBrowserWrapper = connect(
-  ({ UI }: RootState) => ({ queriesList: UI.getIn(['queryBrowser', 'queries']) }),
+  ({ UI }: RootState) => ({
+    hideGraphs: !!UI.getIn(['monitoring', 'hideGraphs']),
+    queriesList: UI.getIn(['queryBrowser', 'queries']),
+  }),
   { patchQuery: UIActions.queryBrowserPatchQuery },
 )(QueryBrowserWrapper_);
 
@@ -949,7 +960,7 @@ const AddQueryButton_ = ({ addQuery }) => {
       type="button"
       variant="secondary"
     >
-      {t('monitoring~Add query')}
+      {t('public~Add query')}
     </Button>
   );
 };
@@ -960,7 +971,7 @@ const RunQueriesButton_ = ({ runQueries }) => {
 
   return (
     <Button onClick={runQueries} type="submit" variant="primary">
-      {t('monitoring~Run queries')}
+      {t('public~Run queries')}
     </Button>
   );
 };
@@ -997,12 +1008,12 @@ const QueryBrowserPage_: React.FC<QueryBrowserPageProps> = ({ deleteAll }) => {
   return (
     <>
       <Helmet>
-        <title>{t('monitoring~Metrics')}</title>
+        <title>{t('public~Metrics')}</title>
       </Helmet>
       <div className="co-m-nav-title">
         <h1 className="co-m-pane__heading">
           <span>
-            {t('monitoring~Metrics')}
+            {t('public~Metrics')}
             <HeaderPrometheusLink />
           </span>
           <div className="co-actions">
@@ -1063,6 +1074,7 @@ type QueryBrowserPageProps = {
 };
 
 type QueryBrowserWrapperProps = {
+  hideGraphs: boolean;
   patchQuery: (index: number, patch: QueryObj) => any;
   queriesList: ImmutableList<QueryObj>;
 };

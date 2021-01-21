@@ -9,7 +9,8 @@ import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
 import * as classNames from 'classnames';
 import * as _ from 'lodash-es';
-import { Status, TableColumnsType } from '@console/shared';
+import { Button, Popover } from '@patternfly/react-core';
+import { Status, TableColumnsType, useUserSettingsCompatibility } from '@console/shared';
 import { ByteDataTypes } from '@console/shared/src/graph-helper/data-utils';
 import {
   withUserSettingsCompatibility,
@@ -108,79 +109,79 @@ export const menuActions = [
   ...Kebab.factory.common,
 ];
 
-// t('workload~Name')
-// t('workload~Namespace')
-// t('workload~Status')
-// t('workload~Ready')
-// t('workload~Restarts')
-// t('workload~Owner')
-// t('workload~Node')
-// t('workload~Memory')
-// t('workload~CPU')
-// t('workload~Created')
-// t('workload~Labels')
-// t('workload~IP address')
+// t('public~Name')
+// t('public~Namespace')
+// t('public~Status')
+// t('public~Ready')
+// t('public~Restarts')
+// t('public~Owner')
+// t('public~Node')
+// t('public~Memory')
+// t('public~CPU')
+// t('public~Created')
+// t('public~Labels')
+// t('public~IP address')
 
 const podColumnInfo = Object.freeze({
   name: {
     classes: '',
     id: 'name',
-    title: 'workload~Name',
+    title: 'public~Name',
   },
   namespace: {
     classes: '',
     id: 'namespace',
-    title: 'workload~Namespace',
+    title: 'public~Namespace',
   },
   status: {
     classes: '',
     id: 'status',
-    title: 'workload~Status',
+    title: 'public~Status',
   },
   ready: {
     classes: classNames('pf-m-nowrap', 'pf-u-w-10-on-lg', 'pf-u-w-8-on-xl'),
     id: 'ready',
-    title: 'workload~Ready',
+    title: 'public~Ready',
   },
   restarts: {
     classes: classNames('pf-m-nowrap', 'pf-u-w-8-on-2xl'),
     id: 'restarts',
-    title: 'workload~Restarts',
+    title: 'public~Restarts',
   },
   owner: {
     classes: '',
     id: 'owner',
-    title: 'workload~Owner',
+    title: 'public~Owner',
   },
   node: {
     classes: '',
     id: 'node',
-    title: 'workload~Node',
+    title: 'public~Node',
   },
   memory: {
     classes: classNames({ 'pf-u-w-10-on-2xl': showMetrics }),
     id: 'memory',
-    title: 'workload~Memory',
+    title: 'public~Memory',
   },
   cpu: {
     classes: classNames({ 'pf-u-w-10-on-2xl': showMetrics }),
     id: 'cpu',
-    title: 'workload~CPU',
+    title: 'public~CPU',
   },
   created: {
     classes: classNames('pf-u-w-10-on-2xl'),
     id: 'created',
-    title: 'workload~Created',
+    title: 'public~Created',
   },
   labels: {
     classes: '',
     id: 'labels',
-    title: 'workload~Labels',
+    title: 'public~Labels',
   },
   ipaddress: {
     classes: '',
     id: 'ipaddress',
-    title: 'workload~IP address',
+    title: 'public~IP address',
   },
 });
 
@@ -303,136 +304,127 @@ const getSelectedColumns = (showNodes: boolean) => {
 };
 
 const PodTableRow = connect<PodTableRowPropsFromState, null, PodTableRowProps>(podRowStateToProps)(
-  withUserSettingsCompatibility<
-    PodTableRowProps &
-      PodTableRowPropsFromState &
-      WithUserSettingsCompatibilityProps<TableColumnsType>,
-    TableColumnsType
-  >(
-    COLUMN_MANAGEMENT_CONFIGMAP_KEY,
-    COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY,
-    undefined,
-    true,
-  )(
-    ({
-      obj: pod,
-      index,
-      rowKey,
-      style,
-      metrics,
-      showNodes,
-      userSettingState: tableColumns,
-    }: PodTableRowProps &
-      PodTableRowPropsFromState &
-      WithUserSettingsCompatibilityProps<TableColumnsType>) => {
-      const { name, namespace, creationTimestamp, labels } = pod.metadata;
-      const { readyCount, totalContainers } = podReadiness(pod);
-      const phase = podPhase(pod);
-      const restarts = podRestarts(pod);
-      const bytes: number = _.get(metrics, ['memory', namespace, name]);
-      const cores: number = _.get(metrics, ['cpu', namespace, name]);
-      const columns =
-        tableColumns?.[columnManagementID]?.length > 0
-          ? new Set(tableColumns[columnManagementID])
-          : getSelectedColumns(showNodes);
-      return (
-        <TableRow id={pod.metadata.uid} index={index} trKey={rowKey} style={style}>
-          <TableData className={podColumnInfo.name.classes}>
-            <ResourceLink kind={kind} name={name} namespace={namespace} />
-          </TableData>
-          <TableData
-            className={classNames(podColumnInfo.namespace.classes, 'co-break-word')}
-            columns={columns}
-            columnID={podColumnInfo.namespace.id}
-          >
-            <ResourceLink kind="Namespace" name={namespace} />
-          </TableData>
-          <TableData
-            className={podColumnInfo.status.classes}
-            columns={columns}
-            columnID={podColumnInfo.status.id}
-          >
-            <Status status={phase} />
-          </TableData>
-          <TableData
-            className={podColumnInfo.ready.classes}
-            columns={columns}
-            columnID={podColumnInfo.ready.id}
-          >
-            {readyCount}/{totalContainers}
-          </TableData>
-          <TableData
-            className={podColumnInfo.restarts.classes}
-            columns={columns}
-            columnID={podColumnInfo.restarts.id}
-          >
-            {restarts}
-          </TableData>
-          <TableData
-            className={podColumnInfo.owner.classes}
-            columns={columns}
-            columnID={podColumnInfo.owner.id}
-          >
-            {showNodes ? (
-              <ResourceLink kind="Node" name={pod.spec.nodeName} namespace={namespace} />
-            ) : (
-              <OwnerReferences resource={pod} />
-            )}
-          </TableData>
-          <TableData
-            className={podColumnInfo.memory.classes}
-            columns={columns}
-            columnID={podColumnInfo.memory.id}
-          >
-            {bytes ? `${formatBytesAsMiB(bytes)} MiB` : '-'}
-          </TableData>
-          <TableData
-            className={podColumnInfo.cpu.classes}
-            columns={columns}
-            columnID={podColumnInfo.cpu.id}
-          >
-            {cores ? `${formatCores(cores)} cores` : '-'}
-          </TableData>
-          <TableData
-            className={podColumnInfo.created.classes}
-            columns={columns}
-            columnID={podColumnInfo.created.id}
-          >
-            <Timestamp timestamp={creationTimestamp} />
-          </TableData>
-          <TableData
-            className={podColumnInfo.node.classes}
-            columns={columns}
-            columnID={podColumnInfo.node.id}
-          >
+  ({
+    obj: pod,
+    index,
+    rowKey,
+    style,
+    metrics,
+    showNodes,
+  }: PodTableRowProps & PodTableRowPropsFromState) => {
+    const [tableColumns, , loaded] = useUserSettingsCompatibility(
+      COLUMN_MANAGEMENT_CONFIGMAP_KEY,
+      COLUMN_MANAGEMENT_LOCAL_STORAGE_KEY,
+      undefined,
+      true,
+    );
+    const { name, namespace, creationTimestamp, labels } = pod.metadata;
+    const { readyCount, totalContainers } = podReadiness(pod);
+    const phase = podPhase(pod);
+    const restarts = podRestarts(pod);
+    const bytes: number = _.get(metrics, ['memory', namespace, name]);
+    const cores: number = _.get(metrics, ['cpu', namespace, name]);
+    const columns: Set<string> =
+      loaded && tableColumns?.[columnManagementID]?.length > 0
+        ? new Set(tableColumns[columnManagementID])
+        : getSelectedColumns(showNodes);
+    return (
+      <TableRow id={pod.metadata.uid} index={index} trKey={rowKey} style={style}>
+        <TableData className={podColumnInfo.name.classes}>
+          <ResourceLink kind={kind} name={name} namespace={namespace} />
+        </TableData>
+        <TableData
+          className={classNames(podColumnInfo.namespace.classes, 'co-break-word')}
+          columns={columns}
+          columnID={podColumnInfo.namespace.id}
+        >
+          <ResourceLink kind="Namespace" name={namespace} />
+        </TableData>
+        <TableData
+          className={podColumnInfo.status.classes}
+          columns={columns}
+          columnID={podColumnInfo.status.id}
+        >
+          <PodStatus pod={pod} />
+        </TableData>
+        <TableData
+          className={podColumnInfo.ready.classes}
+          columns={columns}
+          columnID={podColumnInfo.ready.id}
+        >
+          {readyCount}/{totalContainers}
+        </TableData>
+        <TableData
+          className={podColumnInfo.restarts.classes}
+          columns={columns}
+          columnID={podColumnInfo.restarts.id}
+        >
+          {restarts}
+        </TableData>
+        <TableData
+          className={podColumnInfo.owner.classes}
+          columns={columns}
+          columnID={podColumnInfo.owner.id}
+        >
+          {showNodes ? (
             <ResourceLink kind="Node" name={pod.spec.nodeName} namespace={namespace} />
-          </TableData>
-          <TableData
-            className={podColumnInfo.labels.classes}
-            columns={columns}
-            columnID={podColumnInfo.labels.id}
-          >
-            <LabelList kind={kind} labels={labels} />
-          </TableData>
-          <TableData
-            className={podColumnInfo.ipaddress.classes}
-            columns={columns}
-            columnID={podColumnInfo.ipaddress.id}
-          >
-            {pod?.status?.hostIP ?? '-'}
-          </TableData>
-          <TableData className={Kebab.columnClass}>
-            <ResourceKebab
-              actions={menuActions}
-              kind={kind}
-              resource={pod}
-              isDisabled={phase === 'Terminating'}
-            />
-          </TableData>
-        </TableRow>
-      );
-    },
-  ),
+          ) : (
+            <OwnerReferences resource={pod} />
+          )}
+        </TableData>
+        <TableData
+          className={podColumnInfo.memory.classes}
+          columns={columns}
+          columnID={podColumnInfo.memory.id}
+        >
+          {bytes ? `${formatBytesAsMiB(bytes)} MiB` : '-'}
+        </TableData>
+        <TableData
+          className={podColumnInfo.cpu.classes}
+          columns={columns}
+          columnID={podColumnInfo.cpu.id}
+        >
+          {cores ? `${formatCores(cores)} cores` : '-'}
+        </TableData>
+        <TableData
+          className={podColumnInfo.created.classes}
+          columns={columns}
+          columnID={podColumnInfo.created.id}
+        >
+          <Timestamp timestamp={creationTimestamp} />
+        </TableData>
+        <TableData
+          className={podColumnInfo.node.classes}
+          columns={columns}
+          columnID={podColumnInfo.node.id}
+        >
+          <ResourceLink kind="Node" name={pod.spec.nodeName} namespace={namespace} />
+        </TableData>
+        <TableData
+          className={podColumnInfo.labels.classes}
+          columns={columns}
+          columnID={podColumnInfo.labels.id}
+        >
+          <LabelList kind={kind} labels={labels} />
+        </TableData>
+        <TableData
+          className={podColumnInfo.ipaddress.classes}
+          columns={columns}
+          columnID={podColumnInfo.ipaddress.id}
+        >
+          {pod?.status?.hostIP ?? '-'}
+        </TableData>
+        <TableData className={Kebab.columnClass}>
+          <ResourceKebab
+            actions={menuActions}
+            kind={kind}
+            resource={pod}
+            isDisabled={phase === 'Terminating'}
+          />
+        </TableData>
+      </TableRow>
+    );
+  },
 );
 PodTableRow.displayName = 'PodTableRow';
 
@@ -488,13 +480,13 @@ export const PodContainerTable: React.FC<PodContainerTableProps> = ({
       <SectionHeading text={heading} />
       <div className="co-m-table-grid co-m-table-grid--bordered">
         <div className="row co-m-table-grid__head">
-          <div className="col-lg-2 col-md-3 col-sm-4 col-xs-5">{t('workload~Name')}</div>
-          <div className="col-lg-2 col-md-3 col-sm-5 col-xs-7">{t('workload~Image')}</div>
-          <div className="col-lg-2 col-md-2 col-sm-3 hidden-xs">{t('workload~State')}</div>
-          <div className="col-lg-1 col-md-2 hidden-sm hidden-xs">{t('workload~Restarts')}</div>
-          <div className="col-lg-2 col-md-2 hidden-sm hidden-xs">{t('workload~Started')}</div>
-          <div className="col-lg-2 hidden-md hidden-sm hidden-xs">{t('workload~Finished')}</div>
-          <div className="col-lg-1 hidden-md hidden-sm hidden-xs">{t('workload~Exit code')}</div>
+          <div className="col-lg-2 col-md-3 col-sm-4 col-xs-5">{t('public~Name')}</div>
+          <div className="col-lg-2 col-md-3 col-sm-5 col-xs-7">{t('public~Image')}</div>
+          <div className="col-lg-2 col-md-2 col-sm-3 hidden-xs">{t('public~State')}</div>
+          <div className="col-lg-1 col-md-2 hidden-sm hidden-xs">{t('public~Restarts')}</div>
+          <div className="col-lg-2 col-md-2 hidden-sm hidden-xs">{t('public~Started')}</div>
+          <div className="col-lg-2 hidden-md hidden-sm hidden-xs">{t('public~Finished')}</div>
+          <div className="col-lg-1 hidden-md hidden-sm hidden-xs">{t('public~Exit code')}</div>
         </div>
         <div className="co-m-table-grid__body">
           {containers.map((c: any, i: number) => (
@@ -517,7 +509,7 @@ const PodGraphs = requirePrometheus(({ pod }) => {
       <div className="row">
         <div className="col-md-12 col-lg-4">
           <Area
-            title={t('workload~Memory usage')}
+            title={t('public~Memory usage')}
             humanize={humanizeBinaryBytes}
             byteDataType={ByteDataTypes.BinaryBytes}
             namespace={pod.metadata.namespace}
@@ -528,7 +520,7 @@ const PodGraphs = requirePrometheus(({ pod }) => {
         </div>
         <div className="col-md-12 col-lg-4">
           <Area
-            title={t('workload~CPU usage')}
+            title={t('public~CPU usage')}
             humanize={humanizeCpuCores}
             namespace={pod.metadata.namespace}
             query={`pod:container_cpu_usage:sum{pod='${pod.metadata.name}',namespace='${pod.metadata.namespace}'}`}
@@ -538,7 +530,7 @@ const PodGraphs = requirePrometheus(({ pod }) => {
         </div>
         <div className="col-md-12 col-lg-4">
           <Area
-            title={t('workload~Filesystem')}
+            title={t('public~Filesystem')}
             humanize={humanizeBinaryBytes}
             byteDataType={ByteDataTypes.BinaryBytes}
             namespace={pod.metadata.namespace}
@@ -549,7 +541,7 @@ const PodGraphs = requirePrometheus(({ pod }) => {
       <div className="row">
         <div className="col-md-12 col-lg-4">
           <Stack
-            title={t('workload~Network in')}
+            title={t('public~Network in')}
             humanize={humanizeDecimalBytesPerSec}
             namespace={pod.metadata.namespace}
             query={`(sum(irate(container_network_receive_bytes_total{pod='${pod.metadata.name}', namespace='${pod.metadata.namespace}'}[5m])) by (pod, namespace, interface)) + on(namespace,pod,interface) group_left(network_name) ( pod_network_name_info )`}
@@ -558,7 +550,7 @@ const PodGraphs = requirePrometheus(({ pod }) => {
         </div>
         <div className="col-md-12 col-lg-4">
           <Stack
-            title={t('workload~Network out')}
+            title={t('public~Network out')}
             humanize={humanizeDecimalBytesPerSec}
             namespace={pod.metadata.namespace}
             query={`(sum(irate(container_network_transmit_bytes_total{pod='${pod.metadata.name}', namespace='${pod.metadata.namespace}'}[5m])) by (pod, namespace, interface)) + on(namespace,pod,interface) group_left(network_name) ( pod_network_name_info )`}
@@ -571,30 +563,76 @@ const PodGraphs = requirePrometheus(({ pod }) => {
   );
 });
 
-export const PodStatus: React.FC<PodStatusProps> = ({ pod }) => <Status status={podPhase(pod)} />;
+const PodStatusPopover: React.FC<PodStatusPopoverProps> = ({
+  bodyContent,
+  headerContent,
+  status,
+}) => {
+  return (
+    <Popover headerContent={headerContent} bodyContent={bodyContent}>
+      <Button variant="link" isInline>
+        <Status status={status} />
+      </Button>
+    </Popover>
+  );
+};
+
+export const PodStatus: React.FC<PodStatusProps> = ({ pod }) => {
+  const status = podPhase(pod);
+  const unschedulableCondition = pod.status?.conditions?.find(
+    (condition) => condition.reason === 'Unschedulable' && condition.status === 'False',
+  );
+  const containerStatusStateWaiting = pod.status?.containerStatuses?.find(
+    (cs) => cs.state?.waiting,
+  );
+  const { t } = useTranslation();
+
+  if (status === 'Pending' && unschedulableCondition) {
+    return (
+      <PodStatusPopover
+        bodyContent={unschedulableCondition.message}
+        headerContent={t('public~Pod unschedulable')}
+        status={status}
+      />
+    );
+  }
+  if (
+    (status === 'CrashLoopBackOff' || status === 'ErrImagePull' || status === 'ImagePullBackOff') &&
+    containerStatusStateWaiting
+  ) {
+    return (
+      <PodStatusPopover
+        bodyContent={containerStatusStateWaiting.state.waiting.message}
+        status={status}
+      />
+    );
+  }
+
+  return <Status status={status} />;
+};
 
 export const PodDetailsList: React.FC<PodDetailsListProps> = ({ pod }) => {
   const { t } = useTranslation();
   return (
     <dl className="co-m-pane__details">
-      <dt>{t('workload~Status')}</dt>
+      <dt>{t('public~Status')}</dt>
       <dd>
         <PodStatus pod={pod} />
       </dd>
-      <DetailsItem label={t('workload~Restart policy')} obj={pod} path="spec.restartPolicy">
+      <DetailsItem label={t('public~Restart policy')} obj={pod} path="spec.restartPolicy">
         {getRestartPolicyLabel(pod)}
       </DetailsItem>
       <DetailsItem
-        label={t('workload~Active deadline seconds')}
+        label={t('public~Active deadline seconds')}
         obj={pod}
         path="spec.activeDeadlineSeconds"
       >
         {pod.spec.activeDeadlineSeconds
-          ? t('workload~second', { count: pod.spec.activeDeadlineSeconds })
-          : t('workload~Not configured')}
+          ? t('public~{{count}} second', { count: pod.spec.activeDeadlineSeconds })
+          : t('public~Not configured')}
       </DetailsItem>
-      <DetailsItem label={t('workload~Pod IP')} obj={pod} path="status.podIP" />
-      <DetailsItem label={t('workload~Node')} obj={pod} path="spec.nodeName" hideEmpty>
+      <DetailsItem label={t('public~Pod IP')} obj={pod} path="status.podIP" />
+      <DetailsItem label={t('public~Node')} obj={pod} path="spec.nodeName" hideEmpty>
         <NodeLink name={pod.spec.nodeName} />
       </DetailsItem>
     </dl>
@@ -639,7 +677,7 @@ const Details: React.FC<PodDetailsProps> = ({ obj: pod }) => {
     <>
       <ScrollToTopOnMount />
       <div className="co-m-pane__body">
-        <SectionHeading text={t('workload~Pod details')} />
+        <SectionHeading text={t('public~Pod details')} />
         <PodGraphs pod={pod} />
         <div className="row">
           <div className="col-sm-6">
@@ -654,7 +692,7 @@ const Details: React.FC<PodDetailsProps> = ({ obj: pod }) => {
         <div className="co-m-pane__body">
           <PodContainerTable
             key="initContainerTable"
-            heading={t('workload~Init containers')}
+            heading={t('public~Init containers')}
             containers={pod.spec.initContainers}
             pod={pod}
           />
@@ -663,16 +701,16 @@ const Details: React.FC<PodDetailsProps> = ({ obj: pod }) => {
       <div className="co-m-pane__body">
         <PodContainerTable
           key="containerTable"
-          heading={t('workload~Containers')}
+          heading={t('public~Containers')}
           containers={pod.spec.containers}
           pod={pod}
         />
       </div>
       <div className="co-m-pane__body">
-        <VolumesTable resource={pod} heading={t('workload~Volumes')} />
+        <VolumesTable resource={pod} heading={t('public~Volumes')} />
       </div>
       <div className="co-m-pane__body">
-        <SectionHeading text={t('workload~Conditions')} />
+        <SectionHeading text={t('public~Conditions')} />
         <Conditions conditions={pod.status.conditions} />
       </div>
     </>
@@ -763,7 +801,7 @@ export const PodList: React.FC<PodListProps> = withUserSettingsCompatibility<
       {...props}
       activeColumns={selectedColumns}
       columnManagementID={columnManagementID}
-      aria-label={t('workload~Pods')}
+      aria-label={t('public~Pods')}
       Header={getHeader(showNodes)}
       Row={getRow(showNodes)}
       virtualize
@@ -881,6 +919,12 @@ type PodContainerTableProps = {
   heading: string;
   containers: ContainerSpec[];
   pod: PodKind;
+};
+
+type PodStatusPopoverProps = {
+  bodyContent: string;
+  headerContent?: string;
+  status: string;
 };
 
 type PodStatusProps = {

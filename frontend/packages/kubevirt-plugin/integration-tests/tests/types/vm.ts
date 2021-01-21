@@ -1,4 +1,4 @@
-import { FlavorConfig, Network, Disk, CloudInitConfig, DiskAdvance } from './types';
+import { FlavorConfig, Network, Disk, CloudInitConfig } from './types';
 import { V1Disk } from '../../../src/types/vm/disk/V1Disk';
 import { V1Volume } from '../../../src/types/vm/disk/V1Volume';
 import { V1alpha1DataVolume } from '../../../src/types/vm/disk/V1alpha1DataVolume';
@@ -35,15 +35,15 @@ export type BaseVMBuilderData = {
   cloudInit?: CloudInitConfig;
 };
 
-export type VMBuilderData = BaseVMBuilderData & {
+export type VMBuilderData = (BaseVMBuilderData | VMTemplateBuilderData) & {
   selectTemplateName?: string;
   waitForDiskImport?: boolean;
   startOnCreation?: boolean;
   template?: string;
   pvcSize?: string;
+  pvcName?: string;
   customize?: boolean;
   mountAsCDROM?: boolean;
-  diskAdvance?: DiskAdvance;
 };
 
 export type KubevirtResourceConfig = {
@@ -63,7 +63,7 @@ export type KubevirtResourceConfig = {
   bootableDevice?: string;
 };
 
-export type VMTemplateBuilderData = BaseVMBuilderData;
+export type VMTemplateBuilderData = BaseVMBuilderData & { provider: string };
 
 export type VMBuilderDataGenerationConfig = {
   flavor?: FlavorConfig[];

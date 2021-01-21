@@ -16,6 +16,12 @@ import {
   USER_SETTING_CONFIGMAP_NAMESPACE,
 } from '../utils/user-settings';
 
+const alwaysUseFallbackLocalStorage = window.SERVER_FLAGS.userSettingsLocation === 'localstorage';
+if (alwaysUseFallbackLocalStorage) {
+  // eslint-disable-next-line no-console
+  console.info('user-settings will be stored in localstorage instead of configmap.');
+}
+
 const useCounterRef = (initialValue: number = 0): [boolean, () => void, () => void] => {
   const counterRef = React.useRef<number>(initialValue);
   const increment = React.useCallback(() => {
@@ -32,19 +38,22 @@ export const useUserSettings = <T>(
   defaultValue?: T,
   sync: boolean = false,
 ): [T, React.Dispatch<React.SetStateAction<T>>, boolean] => {
-  const defaultValueRef = React.useRef<T>(defaultValue);
   const keyRef = React.useRef<string>(key);
+  const defaultValueRef = React.useRef<T>(defaultValue);
   const [isRequestPending, increaseRequest, decreaseRequest] = useCounterRef();
   const userUid = useSelector(
     (state: RootState) => state.UI.get('user')?.metadata?.uid ?? 'kubeadmin',
   );
   const configMapResource = React.useMemo(
-    () => ({
-      kind: ConfigMapModel.kind,
-      namespace: USER_SETTING_CONFIGMAP_NAMESPACE,
-      isList: false,
-      name: `user-settings-${userUid}`,
-    }),
+    () =>
+      alwaysUseFallbackLocalStorage
+        ? null
+        : {
+            kind: ConfigMapModel.kind,
+            namespace: USER_SETTING_CONFIGMAP_NAMESPACE,
+            isList: false,
+            name: `user-settings-${userUid}`,
+          },
     [userUid],
   );
   const [cfData, cfLoaded, cfLoadError] = useK8sWatchResource<K8sResourceKind>(configMapResource);
@@ -53,15 +62,21 @@ export const useUserSettings = <T>(
   settingsRef.current = settings;
   const [loaded, setLoaded] = React.useState(false);
 
-  const [fallbackLocalStorage, setFallbackLocalStorage] = React.useState<boolean>(false);
+  const [fallbackLocalStorage, setFallbackLocalStorage] = React.useState<boolean>(
+    alwaysUseFallbackLocalStorage,
+  );
   const [lsData, setLsDataCallback] = useUserSettingsLocalStorage(
+    alwaysUseFallbackLocalStorage ? 'console-user-settings' : `console-user-settings-${userUid}`,
     keyRef.current,
     defaultValueRef.current,
-    fallbackLocalStorage,
+    fallbackLocalStorage && sync,
   );
 
   React.useEffect(() => {
-    if (!fallbackLocalStorage && (cfLoadError || (!cfData && cfLoaded))) {
+    if (fallbackLocalStorage) {
+      return;
+    }
+    if (cfLoadError || (!cfData && cfLoaded)) {
       (async () => {
         try {
           await createConfigMap();
@@ -78,7 +93,6 @@ export const useUserSettings = <T>(
       /**
        * update settings if key is present in config map but data is not equal to settings
        */
-      !fallbackLocalStorage &&
       cfData &&
       cfLoaded &&
       cfData.data?.hasOwnProperty(keyRef.current) &&
@@ -90,7 +104,6 @@ export const useUserSettings = <T>(
       /**
        * if key doesn't exist in config map send patch request to add the key with default value
        */
-      !fallbackLocalStorage &&
       defaultValueRef.current !== undefined &&
       cfData &&
       cfLoaded &&
@@ -99,7 +112,7 @@ export const useUserSettings = <T>(
       updateConfigMap(cfData, keyRef.current, seralizeData(defaultValueRef.current));
       setSettings(defaultValueRef.current);
       setLoaded(true);
-    } else if (!fallbackLocalStorage && cfLoaded) {
+    } else if (cfLoaded) {
       setSettings(defaultValueRef.current);
       setLoaded(true);
     }
@@ -129,30 +142,20 @@ export const useUserSettings = <T>(
   );
 
   const resultedSettings = React.useMemo(() => {
-    /**
-     * If key is deleted from the config map then return default value
-     */
-    if (
-      sync &&
-      cfLoaded &&
-      cfData &&
-      !cfData.data?.hasOwnProperty(keyRef.current) &&
-      settings !== undefined &&
-      !isRequestPending
-    ) {
-      return defaultValueRef.current;
-    }
-    if (
-      sync &&
-      !isRequestPending &&
-      cfLoaded &&
-      cfData &&
-      seralizeData(settingsRef.current) !== cfData?.data?.[keyRef.current]
-    ) {
-      return deseralizeData(cfData?.data?.[keyRef.current]);
+    if (sync && cfLoaded && cfData && !isRequestPending) {
+      /**
+       * If key is deleted from the config map then return default value
+       */
+      if (!cfData.data?.hasOwnProperty(keyRef.current) && settings !== undefined) {
+        return defaultValueRef.current;
+      }
+      if (seralizeData(settingsRef.current) !== cfData?.data?.[keyRef.current]) {
+        return deseralizeData(cfData?.data?.[keyRef.current]);
+      }
     }
     return settings;
   }, [sync, isRequestPending, cfData, cfLoaded, settings]);
+  settingsRef.current = resultedSettings;
 
   return fallbackLocalStorage
     ? [lsData, setLsDataCallback, true]

@@ -94,9 +94,9 @@ describe('addResourceMenuUtils: ', () => {
       getAddPageUrl(resource, '', ImportOptions.EVENTSOURCE, true),
       'https://mock.test.com',
     );
-    expect(url.pathname).toBe('/event-source/ns/testproject1');
+    expect(url.pathname).toBe('/catalog/ns/testproject1');
     expect(url.searchParams.get('application')).toBe('application-1');
-    expect(Array.from(url.searchParams.entries())).toHaveLength(1);
+    expect(Array.from(url.searchParams.entries())).toHaveLength(2);
   });
 
   it('should return the page url with proper queryparams for catalog flow', async () => {
@@ -147,6 +147,7 @@ describe('addResourceMenuUtils: ', () => {
       '',
       hasApplication,
       connectorSourceObj,
+      [],
     );
     const contextSource: string = `${referenceFor(connectorSourceObj)}/${
       connectorSourceObj?.metadata?.name
@@ -167,7 +168,7 @@ describe('addResourceMenuUtils: ', () => {
     const labelKey = 'devconsole~From Git';
 
     const kebabAction: KebabAction = createKebabAction(labelKey, icon, ImportOptions.GIT);
-    const kebabOption: KebabOption = kebabAction(primaryObj, '', hasApplication);
+    const kebabOption: KebabOption = kebabAction(primaryObj, '', hasApplication, undefined, []);
 
     expect(kebabOption.labelKey).toEqual(labelKey);
     expect(kebabOption.icon).toEqual(icon);
@@ -184,7 +185,7 @@ describe('addResourceMenuUtils: ', () => {
     const label = 'From Git';
 
     const kebabAction: KebabAction = createKebabAction(label, icon, ImportOptions.GIT);
-    const kebabOption: KebabOption = kebabAction(primaryObj, null, hasApplication);
+    const kebabOption: KebabOption = kebabAction(primaryObj, null, hasApplication, undefined, []);
 
     expect(kebabOption.accessReview).toBe(undefined);
   });

@@ -9,33 +9,29 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
-	"k8s.io/client-go/rest"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"strings"
-
-	"k8s.io/klog"
+	"time"
 
 	"github.com/coreos/dex/api"
 	"github.com/coreos/pkg/health"
 
 	"github.com/openshift/console/pkg/auth"
-	"github.com/openshift/console/pkg/helm/actions"
+	"github.com/openshift/console/pkg/graphql/resolver"
 	helmhandlerspkg "github.com/openshift/console/pkg/helm/handlers"
+	"github.com/openshift/console/pkg/plugins"
 	"github.com/openshift/console/pkg/proxy"
 	"github.com/openshift/console/pkg/serverutils"
 	"github.com/openshift/console/pkg/terminal"
-
 	"github.com/openshift/console/pkg/usersettings"
 	"github.com/openshift/console/pkg/version"
 
 	graphql "github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/rawagner/graphql-transport-ws/graphqlws"
-
-	"github.com/openshift/console/pkg/graphql/resolver"
 )
 
 const (
@@ -58,42 +54,45 @@ const (
 	helmChartRepoProxyEndpoint       = "/api/helm/charts/"
 	gitopsEndpoint                   = "/api/gitops/"
 	devfileEndpoint                  = "/api/devfile/"
+	pluginsEndpoint                  = "/api/plugins/"
 
 	sha256Prefix = "sha256~"
 )
 
 type jsGlobals struct {
-	ConsoleVersion           string `json:"consoleVersion"`
-	AuthDisabled             bool   `json:"authDisabled"`
-	KubectlClientID          string `json:"kubectlClientID"`
-	BasePath                 string `json:"basePath"`
-	LoginURL                 string `json:"loginURL"`
-	LoginSuccessURL          string `json:"loginSuccessURL"`
-	LoginErrorURL            string `json:"loginErrorURL"`
-	LogoutURL                string `json:"logoutURL"`
-	LogoutRedirect           string `json:"logoutRedirect"`
-	RequestTokenURL          string `json:"requestTokenURL"`
-	KubeAdminLogoutURL       string `json:"kubeAdminLogoutURL"`
-	KubeAPIServerURL         string `json:"kubeAPIServerURL"`
-	PrometheusBaseURL        string `json:"prometheusBaseURL"`
-	PrometheusTenancyBaseURL string `json:"prometheusTenancyBaseURL"`
-	AlertManagerBaseURL      string `json:"alertManagerBaseURL"`
-	MeteringBaseURL          string `json:"meteringBaseURL"`
-	Branding                 string `json:"branding"`
-	CustomProductName        string `json:"customProductName"`
-	CustomLogoURL            string `json:"customLogoURL"`
-	StatuspageID             string `json:"statuspageID"`
-	DocumentationBaseURL     string `json:"documentationBaseURL"`
-	AlertManagerPublicURL    string `json:"alertManagerPublicURL"`
-	GrafanaPublicURL         string `json:"grafanaPublicURL"`
-	PrometheusPublicURL      string `json:"prometheusPublicURL"`
-	ThanosPublicURL          string `json:"thanosPublicURL"`
-	LoadTestFactor           int    `json:"loadTestFactor"`
-	InactivityTimeout        int    `json:"inactivityTimeout"`
-	GOARCH                   string `json:"GOARCH"`
-	GOOS                     string `json:"GOOS"`
-	GraphQLBaseURL           string `json:"graphqlBaseURL"`
-	DevCatalogCategories     string `json:"developerCatalogCategories"`
+	ConsoleVersion           string   `json:"consoleVersion"`
+	AuthDisabled             bool     `json:"authDisabled"`
+	KubectlClientID          string   `json:"kubectlClientID"`
+	BasePath                 string   `json:"basePath"`
+	LoginURL                 string   `json:"loginURL"`
+	LoginSuccessURL          string   `json:"loginSuccessURL"`
+	LoginErrorURL            string   `json:"loginErrorURL"`
+	LogoutURL                string   `json:"logoutURL"`
+	LogoutRedirect           string   `json:"logoutRedirect"`
+	RequestTokenURL          string   `json:"requestTokenURL"`
+	KubeAdminLogoutURL       string   `json:"kubeAdminLogoutURL"`
+	KubeAPIServerURL         string   `json:"kubeAPIServerURL"`
+	PrometheusBaseURL        string   `json:"prometheusBaseURL"`
+	PrometheusTenancyBaseURL string   `json:"prometheusTenancyBaseURL"`
+	AlertManagerBaseURL      string   `json:"alertManagerBaseURL"`
+	MeteringBaseURL          string   `json:"meteringBaseURL"`
+	Branding                 string   `json:"branding"`
+	CustomProductName        string   `json:"customProductName"`
+	CustomLogoURL            string   `json:"customLogoURL"`
+	StatuspageID             string   `json:"statuspageID"`
+	DocumentationBaseURL     string   `json:"documentationBaseURL"`
+	AlertManagerPublicURL    string   `json:"alertManagerPublicURL"`
+	GrafanaPublicURL         string   `json:"grafanaPublicURL"`
+	PrometheusPublicURL      string   `json:"prometheusPublicURL"`
+	ThanosPublicURL          string   `json:"thanosPublicURL"`
+	LoadTestFactor           int      `json:"loadTestFactor"`
+	InactivityTimeout        int      `json:"inactivityTimeout"`
+	GOARCH                   string   `json:"GOARCH"`
+	GOOS                     string   `json:"GOOS"`
+	GraphQLBaseURL           string   `json:"graphqlBaseURL"`
+	DevCatalogCategories     string   `json:"developerCatalogCategories"`
+	UserSettingsLocation     string   `json:"userSettingsLocation"`
+	ConsolePlugins           []string `json:"consolePlugins"`
 }
 
 type Server struct {
@@ -107,6 +106,7 @@ type Server struct {
 	ServiceAccountToken  string
 	KubectlClientID      string
 	KubeAPIServerURL     string
+	KubeVersion          string
 	DocumentationBaseURL *url.URL
 	Branding             string
 	CustomProductName    string
@@ -115,6 +115,8 @@ type Server struct {
 	LoadTestFactor       int
 	DexClient            api.DexClient
 	InactivityTimeout    int
+	// Map that contains list of enabled plugins and their endpoints.
+	EnabledConsolePlugins map[string]string
 	// A client with the correct TLS setup for communicating with the API server.
 	K8sClient                        *http.Client
 	ThanosProxyConfig                *proxy.Config
@@ -124,6 +126,7 @@ type Server struct {
 	AlertManagerTenancyProxyConfig   *proxy.Config
 	MeteringProxyConfig              *proxy.Config
 	TerminalProxyTLSConfig           *tls.Config
+	PluginsProxyTLSConfig            *tls.Config
 	GitOpsProxyConfig                *proxy.Config
 	// A lister for resource listing of a particular kind
 	MonitoringDashboardConfigMapLister ResourceLister
@@ -137,6 +140,7 @@ type Server struct {
 	PrometheusPublicURL   *url.URL
 	ThanosPublicURL       *url.URL
 	DevCatalogCategories  string
+	UserSettingsLocation  string
 }
 
 func (s *Server) authDisabled() bool {
@@ -410,18 +414,26 @@ func (s *Server) HTTPHandler() http.Handler {
 	}
 	handle("/api/console/user-settings", authHandlerWithUser(userSettingHandler.HandleUserSettings))
 
-	// Get running kubernetes version and inject into helm handlers.
-	config := &rest.Config{
-		APIPath:   s.K8sProxyConfig.Endpoint.String(),
-		Transport: s.K8sClient.Transport,
-	}
-	kubeVersion, err := actions.GetKubeVersion(config)
-	if err != nil {
-		kubeVersion = os.Getenv("KUBE_GIT_VERSION")
-		klog.Warningf("Failed to get cluster k8s version from api server %s, falling back to env var KUBE_GIT_VERSION", err.Error())
-	}
+	helmHandlers := helmhandlerspkg.New(s.K8sProxyConfig.Endpoint.String(), s.K8sClient.Transport, s)
 
-	helmHandlers := helmhandlerspkg.New(s.K8sProxyConfig.Endpoint.String(), s.K8sClient.Transport, kubeVersion)
+	// No need to create plugins handler if no plugin is enabled.
+	if len(s.EnabledConsolePlugins) > 0 {
+		pluginsHandler := plugins.NewPluginsHandler(
+			&http.Client{
+				Timeout:   10 * time.Second,
+				Transport: &http.Transport{TLSClientConfig: s.PluginsProxyTLSConfig},
+			},
+			s.ServiceAccountToken,
+			s.EnabledConsolePlugins,
+		)
+
+		handle(pluginsEndpoint, http.StripPrefix(
+			proxy.SingleJoiningSlash(s.BaseURL.Path, pluginsEndpoint),
+			authHandler(func(w http.ResponseWriter, r *http.Request) {
+				pluginsHandler.HandlePlugins(w, r)
+			}),
+		))
+	}
 
 	// Helm Endpoints
 	handle("/api/helm/template", authHandlerWithUser(helmHandlers.HandleHelmRenderManifests))
@@ -503,6 +515,8 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
 		LoadTestFactor:        s.LoadTestFactor,
 		GraphQLBaseURL:        proxy.SingleJoiningSlash(s.BaseURL.Path, graphQLEndpoint),
 		DevCatalogCategories:  s.DevCatalogCategories,
+		UserSettingsLocation:  s.UserSettingsLocation,
+		ConsolePlugins:        getMapKeys(s.EnabledConsolePlugins),
 	}
 
 	if !s.authDisabled() {
@@ -596,4 +610,12 @@ func tokenToObjectName(token string) string {
 	name := strings.TrimPrefix(token, sha256Prefix)
 	h := sha256.Sum256([]byte(name))
 	return sha256Prefix + base64.RawURLEncoding.EncodeToString(h[0:])
+}
+
+func getMapKeys(m map[string]string) []string {
+	keys := []string{}
+	for key, _ := range m {
+		keys = append(keys, key)
+	}
+	return keys
 }

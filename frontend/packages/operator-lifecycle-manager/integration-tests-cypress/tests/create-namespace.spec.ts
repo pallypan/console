@@ -1,9 +1,13 @@
+import { nav } from '../../../integration-tests-cypress/views/nav';
 import { checkErrors, testName } from '../../../integration-tests-cypress/support';
 import { modal } from '../../../integration-tests-cypress/views/modal';
 
 describe('Create namespace from install operators', () => {
   before(() => {
     cy.login();
+    cy.visit('/');
+    nav.sidenav.switcher.changePerspectiveTo('Administrator');
+    nav.sidenav.switcher.shouldHaveText('Administrator');
     cy.createProject(testName);
   });
 
@@ -48,7 +52,7 @@ describe('Create namespace from install operators', () => {
     // verify operator began installation
     cy.byTestID('view-installed-operators-btn').should(
       'contain',
-      `View Installed Operators in namespace ${nsName}`,
+      `View installed Operators in Namespace ${nsName}`,
     );
 
     // Verify namespace was created successfully

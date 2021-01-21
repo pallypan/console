@@ -23,6 +23,7 @@ import {
   DISK_SOURCE,
   DISK_DRIVE,
   diskAccessMode,
+  diskVolumeMode,
 } from '../utils/constants/vm';
 import { ProvisionSource } from '../utils/constants/enums/provisionSource';
 
@@ -83,14 +84,18 @@ export const kubevirtStorage = getResourceObject(
   'configMap',
 );
 
-export const getTestDataVolume = () =>
-  dataVolumeManifest({
-    name: `testdv-${testName}`,
-    namespace: testName,
+export const AccessMode = resolveStorageDataAttribute(kubevirtStorage, 'accessMode');
+export const VolumeMode = resolveStorageDataAttribute(kubevirtStorage, 'volumeMode');
+
+export const getTestDataVolume = (name?: string, namespace?: string) => {
+  return dataVolumeManifest({
+    name: name || `testdv-${testName}`,
+    namespace: namespace || testName,
     sourceURL: ProvisionSource.URL.getSource(),
-    accessMode: resolveStorageDataAttribute(kubevirtStorage, 'accessMode'),
-    volumeMode: resolveStorageDataAttribute(kubevirtStorage, 'volumeMode'),
+    accessMode: AccessMode,
+    volumeMode: VolumeMode,
   });
+};
 
 export const getDiskToCloneFrom = (): Disk => {
   const testDV = getTestDataVolume();
@@ -156,9 +161,10 @@ export const rwxRootDisk = {
   storageClass: `${STORAGE_CLASS}`,
   advanced: {
     accessMode: diskAccessMode.ReadWriteMany.value,
+    volumeMode: diskVolumeMode.Block,
   },
 };
-deepFreeze(rootDisk);
+deepFreeze(rwxRootDisk);
 
 export const containerRootDisk: Disk = {
   name: 'rootdisk',
@@ -276,8 +282,8 @@ function getMetadata(
     },
     spec: {
       pvc: {
-        accessModes: [resolveStorageDataAttribute(kubevirtStorage, 'accessMode')],
-        volumeMode: resolveStorageDataAttribute(kubevirtStorage, 'volumeMode'),
+        accessModes: [AccessMode],
+        volumeMode: VolumeMode,
         resources: {
           requests: {
             storage: '1Gi',

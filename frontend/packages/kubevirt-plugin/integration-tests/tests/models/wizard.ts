@@ -8,6 +8,7 @@ import {
   selectOptionByText,
   enabledAsBoolean,
   selectItemFromDropdown,
+  selectAccessModeFromCM,
   getResourceUID,
   checkForError,
 } from '../utils/utils';
@@ -24,22 +25,29 @@ import {
   KEBAP_ACTION,
   VIRTUALIZATION_TITLE,
   SEC,
-  // CHARACTERS_NOT_ALLOWED,
+  STORAGE_CLASS,
 } from '../utils/constants/common';
+import { AccessMode, VolumeMode } from '../mocks/mocks';
 import { NetworkInterfaceDialog } from '../dialogs/networkInterfaceDialog';
 import { DiskDialog } from '../dialogs/diskDialog';
-import { Flavor, StepTitle } from '../utils/constants/wizard';
+import { Flavor, StepTitle, TemplateByName } from '../utils/constants/wizard';
 import * as view from '../../views/wizard.view';
 import { resourceHorizontalTab, dropDownItem, dropDownItemMain } from '../../views/uiResource.view';
+import { saveButton } from '../../views/kubevirtUIResource.view';
 import { confirmActionButton } from '../../views/importWizard.view';
 import { virtualizationTitle } from '../../views/vms.list.view';
+import { diskStorageClass } from '../../views/dialogs/diskDialog.view';
 import { templateCreateVMLink } from '../../views/template.view';
 import { VMBuilderData } from '../types/vm';
 import { ProvisionSource } from '../utils/constants/enums/provisionSource';
 import { TemplateModel } from '@console/internal/models';
 
 export class Wizard {
-  async openWizard(model: K8sKind = null) {
+  async openWizard(
+    model: K8sKind = null,
+    customize: boolean = false,
+    template: string = TemplateByName.RHEL7,
+  ) {
     if (
       !(await virtualizationTitle.isPresent()) ||
       (await virtualizationTitle.getText()) !== VIRTUALIZATION_TITLE
@@ -54,7 +62,12 @@ export class Wizard {
 
     await click(view.createItemButton);
     await click(view.createWithWizardButton);
-    await view.waitForNoLoaders();
+
+    if (customize) {
+      await this.selectTemplate(template);
+      await this.next();
+      await click(view.customizeButton);
+    }
   }
 
   async openVMFromTemplateWizard(templateSourceName: string, namespace: string) {
@@ -97,6 +110,10 @@ export class Wizard {
 
   async fillDescription(description: string) {
     await fillInput(view.descriptionInput, description);
+  }
+
+  async fillProvider(provider: string) {
+    await fillInput(view.providerInput, provider);
   }
 
   async selectOperatingSystem(operatingSystem: string) {
@@ -147,9 +164,16 @@ export class Wizard {
     }
   }
 
-  async startOnCreation() {
-    if (!view.startVMOnCreation.isSelected()) {
-      await click(view.startVMOnCreation);
+  async startOnCreation(startOnCreation: boolean) {
+    if (startOnCreation) {
+      if (!view.startVMOnCreation.isSelected()) {
+        await click(view.startVMOnCreation);
+      }
+    }
+    if (!startOnCreation) {
+      if (view.startVMOnCreation.isSelected()) {
+        await click(view.startVMOnCreation);
+      }
     }
   }
 
@@ -211,6 +235,17 @@ export class Wizard {
     await addDiskDialog.edit(disk);
   }
 
+  async setRootDiskStorageOptions() {
+    await view.clickKebabAction('rootdisk', KEBAP_ACTION.Edit);
+    const diskDialog = new DiskDialog();
+    if (await diskStorageClass.isPresent()) {
+      await diskDialog.selectStorageOptions();
+    }
+
+    await click(saveButton);
+    await view.waitForNoLoaders();
+  }
+
   async validateReviewTab(data) {
     expect(await view.nameReviewValue.getText()).toEqual(data.name);
     if (data.description) {
@@ -250,12 +285,26 @@ export class Wizard {
   }
 
   async processBootSource(data: VMBuilderData, ignoreWarnings: boolean = false) {
-    const { provisionSource } = data;
+    const { provisionSource, namespace, pvcName } = data;
+    const accessModeLabel = selectAccessModeFromCM(AccessMode).label;
     if (provisionSource) {
       await this.selectProvisionSource(provisionSource);
+      if (provisionSource === ProvisionSource.DISK) {
+        await selectItemFromDropdown(view.pvcNSButton, view.pvcNS(namespace));
+        await selectItemFromDropdown(view.pvcNameButton, view.pvcName(pvcName));
+      }
     } else {
       throw Error('Provision souce not defined');
     }
+
+    await click(view.diskAdvance);
+    await selectItemFromDropdown(view.selectSCButton, dropDownItem(STORAGE_CLASS));
+    await selectItemFromDropdown(view.selectAccessModeButton, dropDownItem(accessModeLabel));
+    // Volume Mode is set by Source PVC
+    if (provisionSource !== ProvisionSource.DISK) {
+      await selectItemFromDropdown(view.selectVolumeModeButton, dropDownItem(VolumeMode));
+    }
+
     await this.next(ignoreWarnings);
   }
 
@@ -264,14 +313,16 @@ export class Wizard {
     if (name) {
       await this.fillName(name);
     }
-    if (startOnCreation) {
-      await this.startOnCreation();
-    }
+
+    await this.startOnCreation(startOnCreation);
     await this.confirmAndCreate();
   }
 
   async processGeneralStep(data: VMBuilderData, ignoreWarnings: boolean = false) {
-    const { name, description, provisionSource, os, flavor, workload } = data;
+    const { name, namespace, description, provisionSource, flavor, workload, pvcName } = data;
+
+    // wait for OS field loaded
+    await browser.wait(until.presenceOf(view.operatingSystemSelect));
     if (name) {
       await this.fillName(name);
     } else {
@@ -280,19 +331,20 @@ export class Wizard {
     if (description) {
       await this.fillDescription(description);
     }
+    if ('provider' in data) {
+      await this.fillProvider(data.provider);
+    }
     if ((await browser.getCurrentUrl()).match(/\?template=.+$/)) {
       // We are creating a VM from template via its action button
       // ProvisionSource, OS and workload are prefilled and disabled - ignoring them
     } else {
-      if (os) {
-        await this.selectOperatingSystem(os);
-      } else {
-        throw Error('VM OS not defined');
-      }
-
       if (provisionSource) {
         await this.disableGoldenImageCloneCheckbox();
         await this.selectProvisionSource(provisionSource);
+        if (provisionSource === ProvisionSource.DISK) {
+          await selectItemFromDropdown(view.selectPVCNS, view.pvcNS(namespace));
+          await selectItemFromDropdown(view.selectPVCName, view.pvcName(pvcName));
+        }
       }
 
       if (workload) {
@@ -335,6 +387,10 @@ export class Wizard {
         await this.selectBootableDisk(disk.name);
       }
     }
+
+    // set rootdisk storage options
+    await this.setRootDiskStorageOptions();
+
     await this.next();
   }
 
@@ -348,9 +404,7 @@ export class Wizard {
 
   async processReviewStep(data: VMBuilderData) {
     const { startOnCreation } = data;
-    if (startOnCreation) {
-      await this.startOnCreation();
-    }
+    await this.startOnCreation(startOnCreation);
     await this.validateReviewTab(data);
   }
 

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import * as _ from 'lodash';
 import { compose } from 'redux';
 import { connect } from 'react-redux';
@@ -67,9 +68,10 @@ import { ValidTabGuard } from './tabs/valid-tab-guard';
 import { FirehoseResourceEnhanced } from '../../types/custom';
 import { parseVMWizardInitialData } from '../../utils/url';
 import { VMWizardInitialData } from '../../types/url';
+import { getTemplateName } from '../../selectors/vm-template/basic';
+import { useUpdateStorages } from '../../hooks/use-update-data-volume';
 
 import './create-vm-wizard.scss';
-import { useTranslation } from 'react-i18next';
 
 type CreateVMWizardComponentProps = {
   isSimpleView: boolean;
@@ -154,18 +156,32 @@ const CreateVMWizardComponent: React.FC<CreateVMWizardComponentProps> = (props) 
   });
 
   const getWizardTitle = () => {
-    const { isCreateTemplate, isProviderImport, iUserTemplate } = props;
+    const {
+      isCreateTemplate,
+      isProviderImport,
+      iUserTemplate,
+      commonTemplates,
+      initialData: { commonTemplateName },
+    } = props;
     if (isCreateTemplate) {
       return t('kubevirt-plugin~Create Virtual Machine template');
     }
     if (isProviderImport) {
       return t('kubevirt-plugin~Import Virtual Machine');
     }
-    return iUserTemplate
-      ? t('kubevirt-plugin~Create Virtual Machine from {{template}}', {
-          template: iGetName(iUserTemplate),
-        })
-      : t('kubevirt-plugin~Create Virtual Machine');
+    if (iUserTemplate) {
+      return t('kubevirt-plugin~Create Virtual Machine from {{template}}', {
+        template: iGetName(iUserTemplate),
+      });
+    }
+
+    const templates = immutableListToShallowJS(iGetLoadedData(commonTemplates));
+    const template = templates?.find((tmp) => tmp.metadata.name === commonTemplateName);
+    const templateName = getTemplateName(template);
+
+    return t('kubevirt-plugin~Create Virtual Machine from {{template}}', {
+      template: templateName,
+    });
   };
 
   const goBackToEditingSteps = () =>
@@ -463,6 +479,7 @@ export const CreateVMWizardPageComponent: React.FC<CreateVMWizardPageComponentPr
     [commonTemplates, userMode],
   );
 
+  useUpdateStorages(reduxID);
   const openshiftCNVBaseImagesListResult = useBaseImages(loadedCommonTemplates);
   // TODO integrate the list of watches into the redux store to prevent unnecessary copying of data
   const openshiftCNVBaseImages = React.useMemo(
